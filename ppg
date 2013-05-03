@@ -1,0 +1,48 @@
+#!/bin/bash
+
+cmd=
+path=$(dirname "$0")
+case "$#" in
+0)	;;
+*)	cmd="$1"
+	shift
+	case "$cmd" in
+	-v|--v|--ve|--ver|--vers|--versi|--versio|--version)
+		echo "ppg version @@PPG_VERSION@@"
+		exit 0 ;;
+	esac
+	
+	test -x "$path/ppg-$cmd" && exec "$path/ppg-$cmd" "$@"
+	
+	case '@@X@@' in
+	    '')
+		;;
+	    *)
+		test -x "$path/ppg-$cmd@@X@@" &&
+		exec "$path/ppg-$cmd@@X@@" "$@"
+		;;
+	esac
+	;;
+esac
+
+echo "Usage: ppg COMMAND [OPTIONS] [TARGET]"
+if [ -n "$cmd" ]; then
+    echo "ppg command '$cmd' not found."
+fi
+echo "ppg commands are:"
+
+fmt <<\EOF | sed -e 's/^/    /'
+For development environments
+  init-devenv      Prepares a development/test environment for commits
+  commit           Commits though to git
+
+For gold servers
+  merge-scheduled  Merges scheduled changes from the master branch to the
+                   production branch.
+                   (call on a cron)
+
+For puppet clients
+  clone        Clones and inits a client environment
+  init         Prepares a client environment after a "git clone"
+  pullapply    Updates and applies config updates
+EOF
