@@ -35,11 +35,11 @@ orig_production_sha1=$( git rev-parse --revs-only refs/heads/origin/production 2
 
 if [ -n "$production_sha1" -a -n "$orig_production_sha1" ]; then
 	mb=$(git merge-base $production_sha1 $orig_production_sha1)
-	if [[ "$mb" -eq "$production_sha1" ]]; then
+	if [[ "$mb" = "$production_sha1" ]]; then
 		echo "Fast-forwarding your local production head to match origin/production"
 		$GIT_EXEC_PATH/git-update-ref -m "ppg ff to origin/production" refs/heads/production $orig_production_sha1 $production_sha1 || exit 1
 		production_sha1=$orig_production_sha1
-	elif [[ "$mb" -ne "$origin_production_sha1" ]]; then
+	elif [[ "$mb" != "$origin_production_sha1" ]]; then
 		echo >&2 "ERROR: production and origin/production have diverged!"
 		exit 1
 	fi
@@ -48,7 +48,7 @@ fi
 if [ -n "$immediate" ]; then
 	# sanity-check we are on master
 	headname=$(git rev-parse --symbolic-full-name --revs-only HEAD)
-	if [ "$headname" -ne "refs/heads/headname" ]; then
+	if [ "$headname" != "refs/heads/headname" ]; then
 		echo >&2 "ERROR: can only issue --immediate commit from the master branch!"
 		exit 1
 	fi
@@ -68,7 +68,7 @@ if [ -n "$immediate" ]; then
 		# ensure we can ff
 		head_sha1=$(git rev-parse --revs-only master)
 	    mb=$(git merge-base $production_sha1 refs/heads/master)
-		if [[ "$mb" -ne "$production_sha1" ]]; then
+		if [[ "$mb" != "$production_sha1" ]]; then
 			echo >&2 "ERROR: cannot fast-forward master to production"
 			exit 1
 		fi
