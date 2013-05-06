@@ -48,7 +48,7 @@ fi
 if [ -n "$immediate" ]; then
 	# sanity-check we are on master
 	headname=$(git rev-parse --symbolic-full-name --revs-only HEAD)
-	if [ "$headname" != "refs/heads/headname" ]; then
+	if [ "$headname" != "refs/heads/master" ]; then
 		echo >&2 "ERROR: can only issue --immediate commit from the master branch!"
 		exit 1
 	fi
