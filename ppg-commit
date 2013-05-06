@@ -30,18 +30,17 @@ do
 done
 
 # these may not exist
-production_sha1=$( git rev-parse --revs-only refs/heads/production 2>/dev/null )
-orig_production_sha1=$( git rev-parse --revs-only refs/heads/origin/production 2>/dev/null )
+production_sha1=$(git rev-parse --revs-only refs/heads/production 2>/dev/null)
+orig_production_sha1=$(git rev-parse --revs-only refs/heads/origin/production \
+	2>/dev/null )
 
 if [ -n "$production_sha1" -a -n "$orig_production_sha1" ]; then
-	mb=$(git merge-base $production_sha1 $orig_production_sha1)
-	if [[ "$mb" = "$production_sha1" ]]; then
-		echo "Fast-forwarding your local production head to match origin/production"
-		$GIT_EXEC_PATH/git-update-ref -m "ppg ff to origin/production" refs/heads/production $orig_production_sha1 $production_sha1 || exit 1
-		production_sha1=$orig_production_sha1
-	elif [[ "$mb" != "$origin_production_sha1" ]]; then
-		echo >&2 "ERROR: production and origin/production have diverged!"
-		exit 1
+	if [ "$production_sha1" != "$orig_production_sha1" ]; then
+		echo "Fast-forwarding local production head to match origin/production"
+		if ! git push . $orig_production_sha1:refs/heads/production ; then
+			echo >&2 "ERROR: production and origin/production have diverged!"
+			exit 1
+		fi
 	fi
 fi
 
@@ -49,7 +48,7 @@ if [ -n "$immediate" ]; then
 	# sanity-check we are on master
 	headname=$(git rev-parse --symbolic-full-name --revs-only HEAD)
 	if [ "$headname" != "refs/heads/master" ]; then
-		echo >&2 "ERROR: can only issue --immediate commit from the master branch!"
+		echo >&2 "ERROR: can only issue immediate commit on the master branch!"
 		exit 1
 	fi
 fi
@@ -65,13 +64,27 @@ if [ -n "$immediate" ]; then
 		git branch production master
 		production_sha1=$(git rev-parse --revs-only production)
 	else
-		# ensure we can ff
-		head_sha1=$(git rev-parse --revs-only master)
-	    mb=$(git merge-base $production_sha1 refs/heads/master)
-		if [[ "$mb" != "$production_sha1" ]]; then
+		if [[ $(git log --oneline production..HEAD|wc -l) -gt 1 ]]; then
+			echo
+			echo WARNING: More than one change will be scheduled for immediate
+			echo          deployment. Please review the list of commits.
+			echo
+			git log --pretty=short --stat production..HEAD
+			echo
+			echo -n "Is this correct? [Ny] "
+			read correct
+			if [[ "${correct:0:1}" != 'Y' ]] && [[ "${correct:0:1}" != 'y' ]];
+			    then
+     			echo Cancelling immediate schedule. 
+     			exit 1
+			fi
+		fi
+		if ! git push . $head_sha1 refs/heads/production ; then
 			echo >&2 "ERROR: cannot fast-forward master to production"
+			echo >&2 "       make sure the branches have not diverged"
 			exit 1
 		fi
-		$GIT_EXEC_PATH/git-update-ref -m "ppg immediate commit" refs/heads/production $head_sha1 $production_sha1 || exit 1
 	fi
+	echo "Immediate commit successful -- remember to git push --all"
+	echo "to publish the changes on the gold server."
 fi
