@@ -1,0 +1,80 @@
+ #!/bin/bash
+
+PPG_EXEC_PATH=$( dirname $(realpath "${BASH_SOURCE[0]}" ) )
+GIT_EXEC_PATH=$(git --exec-path)
+GIT_DIR=$(git rev-parse --git-dir)
+
+if [ -z "$GIT_DIR" ]; then
+	echo >&2 "Not in a git checkout"
+	exit 1
+fi
+
+datestr=$1
+
+# sanity-check we are on master
+headname=$(git rev-parse --symbolic-full-name --revs-only HEAD)
+if [ "$headname" != "refs/heads/master" ]; then
+	echo >&2 "ERROR: can only schedule from the master branch!"
+	exit 1
+fi
+
+# sanity check whether is already scheduled
+if (git tag --points-at HEAD && git tag --points-at HEAD) | grep -qc '^ppg-sched-' ; then
+	echo ERROR: This commit is already scheduled with these tags:
+    echo 
+	(git tag --points-at HEAD && git tag --points-at HEAD) | sort -u
+    echo
+	exit 1
+fi
+
+# use /usr/bin/date to interpret the date. it is
+# suprisingly powerful
+epoch=$(/usr/bin/date -d "$datestr" +%s) || exit 1
+now=$(/usr/bin/date +%s)
+if [[ $epoch -lt $now ]]; then
+	echo >&2 $(/usr/bin/date -d "@${epoch}") "is in the past"
+    exit 1
+fi
+echo 
+echo Scheduling to deploy commit
+echo
+git log --oneline --stat -n1
+echo
+echo On the following time/date:
+echo
+echo -n "     "
+/usr/bin/date -d "@${epoch}"
+echo -n "     "
+/usr/bin/date --utc -d "@${epoch}"
+echo 
+echo -n "is this correct? [Ny] "
+read correct
+if [[ "${correct:0:1}" != 'Y' ]] && [[ "${correct:0:1}" != 'y' ]]; then
+     echo Cancelling schedule. You can check your datatestamp with
+     echo /usr/bin/date -d "your datestamp"
+     exit 1
+fi
+
+# sed: 
+# - trim the tz (everything after the +)
+# - replace spaces with '-', ':'' with '.''
+tagdatestamp=$(date --rfc-3339=seconds --utc| sed 's/+.*//;s/ /-/g;s/:/./g;')
+
+###
+### FIXME - Add support for tag messages and scheduling something other than HEAD
+###         while still providing useful sanity checks...
+###
+
+# validate is not earlier than any existing timestamps
+if ! ( (git tag -l | grep 'ppg-sched' | sort && echo "ppg-sched-$tagdatestamp") | sort --check=quiet ) ; then
+	last_tag=$(git tag -l | grep 'ppg-sched' | sort | tail -n1)
+	echo "Error: your change cannot be scheduled earlier than $last_tag."
+fi
+git tag "ppg-sched-$tagdatestamp" HEAD || exit 1
+
+echo
+echo Applied "ppg-sched-$tagdatestamp" tag successfully - you must now use
+echo
+echo     git push --tags
+echo 
+echo to ensure the scheduled changes are published on the gold server.
