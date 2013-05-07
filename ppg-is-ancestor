@@ -1,0 +1,23 @@
+#!/bin/bash
+#
+# emulates git merge-base --is-ancestor
+# until git >= 1.8 is prevalent
+#
+## Check if the first <commit> is an ancestor of the second <commit>,
+## and exit with status 0 if true, or with status 1 if not.
+## Errors are signaled by a non-zero status that is not 1.
+
+PARENT=$1
+CHILD=$2
+
+# they may be symbolic, a refname or a pointer to a full tag,
+# make sure we resolve to sha1 of the commit
+PARENT=$(git rev-parse --revs-only ${PARENT}^{commit} ) || exit 1
+CHILD=$(git rev-parse --revs-only ${CHILD}^{commit} ) || exit 1
+
+MB=$(git merge-base $PARENT $CHILD) || exit 1
+
+if [ "$MB" = "$PARENT" ]; then
+	exit 0
+fi
+exit 1
