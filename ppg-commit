@@ -87,4 +87,7 @@ if [ -n "$immediate" ]; then
 	fi
 	echo "Immediate commit successful -- remember to git push --all"
 	echo "to publish the changes on the gold server."
+else
+	echo 'Checking for scheduled updates to the production branch...'
+    $PPG_EXEC_PATH/ppg-ff-scheduled
 fi

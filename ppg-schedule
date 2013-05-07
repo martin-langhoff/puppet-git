@@ -81,9 +81,12 @@ if ! ( (git tag -l|grep 'ppg-sched'|sort&&echo "ppg-sched-$tagdatestamp")\
 fi
 git tag "ppg-sched-$tagdatestamp" HEAD || exit 1
 
-echo
-echo Applied "ppg-sched-$tagdatestamp" tag successfully - you must now use
-echo
-echo     git push --tags
 echo 
-echo to ensure the scheduled changes are published on the gold server.
+echo 'Updating local production branch'
+$PPG_EXEC_PATH/ppg-ff-scheduled
+echo
+echo 'Applied "ppg-sched-$tagdatestamp" tag successfully - you must now use'
+echo
+echo '    git push --tags'
+echo 
+echo 'to ensure the scheduled changes are published on the gold server.'
