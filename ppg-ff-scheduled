@@ -47,9 +47,26 @@ if ! $PPG_EXEC_PATH/ppg-is-ancestor $production_sha1 $target_sha1 ; then
 	exit 1
 fi
 
-echo "Updating production with scheduled changes:"
+headname=$(git rev-parse --symbolic-full-name --revs-only HEAD)
+
+if [ "$headname" = 'refs/heads/production' ]; then
+	# sanity checks when on production
+	if [ $(git diff --name-status HEAD | wc -l) -gt 0 ]; then
+		echo >&2 'ERROR: Currently on "production" branch and with dirty state.'
+		echo >&2 "       Refusing to update with scheduled changes."
+		exit 1
+	fi
+fi
+
+echo "About to update production with scheduled changes:"
 git log --oneline refs/heads/production..$target_sha1
 
 # and finally
-git push . $target_sha1:refs/heads/production
-exit $?
+if [ "$headname" = 'refs/heads/production' ]; then
+	echo "Updating current production checkout"
+	git merge --ff-only $target_sha1
+	exit $?
+else
+	git push . $target_sha1:refs/heads/production
+	exit $?
+fi
