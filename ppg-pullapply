@@ -16,7 +16,7 @@ if [[ "$headname" != "refs/heads/production" ]]; then
 fi
 
 initial_sha1=$(git rev-parse --revs-only HEAD)
-lastgood_sha1=$(git rev-parse --revs-only refs/heads/production-lastgood)
+lastgood_sha1=$(git rev-parse --revs-only refs/heads/ppg/lastgood)
 
 # resilient wrt server availability...
 git fetch || echo "WARNING: error in git fetch"
