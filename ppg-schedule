@@ -82,8 +82,8 @@ fi
 git tag "ppg-sched-$tagdatestamp" HEAD || exit 1
 
 echo 
-echo 'Updating local production branch'
-$PPG_EXEC_PATH/ppg-ff-scheduled
+echo 'Checking for scheduled updates to the production branch...'
+$PPG_EXEC_PATH/ppg-update-production
 echo
 echo 'Applied "ppg-sched-$tagdatestamp" tag successfully - you must now use'
 echo

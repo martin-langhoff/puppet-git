@@ -11,6 +11,7 @@ fi
 
 production_sha1=$(git rev-parse --revs-only refs/heads/production 2>/dev/null)
 if [ -z "$production_sha1" ]; then
+	# no production branch, nothing to do
 	exit 0
 fi
 
@@ -25,11 +26,20 @@ for tag in $(git tag -l | grep '^ppg-sched-' | sort -r); do
 done
 
 if [ -z "$targettag" ]; then
-	echo 'Nothing to do...'
+	# no relevant tags, nothing to do...'
 	exit
 fi
 
 target_sha1=$(git rev-parse --revs-only ${targettag}^{commit} ) || exit 1
+
+# perhaps origin/production is ahead of scheduled tags,
+# if so, it wins...
+orig_production_sha1=$(git rev-parse --revs-only refs/heads/origin/master)
+if [ -n "$orig_production_sha1" ]; then
+	if $PPG_EXEC_PATH/ppg-is-ancestor $targettag $orig_production_sha1 ; then
+		target_sha1=$orig_production_sha1
+	fi
+fi
 
 if [ "$production_sha1" = "$target_sha1" ]; then
 	# nothing to do

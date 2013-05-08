@@ -89,5 +89,5 @@ if [ -n "$immediate" ]; then
 	echo "to publish the changes on the gold server."
 else
 	echo 'Checking for scheduled updates to the production branch...'
-    $PPG_EXEC_PATH/ppg-ff-scheduled
+    $PPG_EXEC_PATH/ppg-update-production
 fi
