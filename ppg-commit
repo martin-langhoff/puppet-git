@@ -12,7 +12,11 @@ fi
 ## we walk the options to extract any ppg-commit options
 ## any other option is passed on to git-commit
 immediate=
-gitcommitargs=
+
+## actually don't init the var, to avoid prepending
+## an empty string to the array
+#gitcommitargs=
+
 while test $# != 0
 do
 	myvar=
@@ -79,7 +83,7 @@ if [ -n "$immediate" ]; then
      			exit 1
 			fi
 		fi
-		if ! git push . $head_sha1 refs/heads/production ; then
+		if ! git push . HEAD:refs/heads/production ; then
 			echo >&2 "ERROR: cannot fast-forward master to production"
 			echo >&2 "       make sure the branches have not diverged"
 			exit 1
