@@ -1,48 +1,56 @@
 #!/bin/bash
 
+usage() {
+	echo "Usage: ppg COMMAND [OPTIONS] [TARGET]"
+	echo 
+	echo "ppg commands are:"
+
+	cat <<\EOF | sed -e 's/^/    /'
+
+For development environments
+
+  init-devenv      Prepares a development/test environment for commits
+  commit           Commits though to git
+  schedule         Schedule a commit for merge to production
+
+For puppet clients
+
+  clone        Clones and inits a client environment
+  init         Prepares a client environment after a "git clone"
+  pullapply    Updates and applies config updates
+  apply        Apply changes manually
+
+EOF
+}
+
+PPG_EXEC_PATH=$( dirname $(realpath "${BASH_SOURCE[0]}" ) )
+
 cmd=
-path=$(dirname "$0")
 case "$#" in
-0)	;;
+0)	usage 
+    ;;
 *)	cmd="$1"
 	shift
 	case "$cmd" in
 	-v|--v|--ve|--ver|--vers|--versi|--versio|--version)
 		echo "ppg version @@PPG_VERSION@@"
 		exit 0 ;;
+	-h|--help)
+		usage
+		exit 0;;
+	-*)
+		echo >&2 "ERROR: Unknown option $cmd"
+		usage
+		exit 1;
 	esac
 	
-	test -x "$path/ppg-$cmd" && exec "$path/ppg-$cmd" "$@"
-	
-	case '@@X@@' in
-	    '')
-		;;
-	    *)
-		test -x "$path/ppg-$cmd@@X@@" &&
-		exec "$path/ppg-$cmd@@X@@" "$@"
-		;;
-	esac
+	if [[ -x "$PPG_EXEC_PATH/ppg-$cmd" ]]; then
+		exec "$PPG_EXEC_PATH/ppg-$cmd" "$@"
+		exit $?
+	else
+		echo >&2 "ERROR: Unknown command $cmd"
+		usage
+		exit 1;
+	fi
 	;;
 esac
-
-echo "Usage: ppg COMMAND [OPTIONS] [TARGET]"
-if [ -n "$cmd" ]; then
-    echo "ppg command '$cmd' not found."
-fi
-echo "ppg commands are:"
-
-fmt <<\EOF | sed -e 's/^/    /'
-For development environments
-  init-devenv      Prepares a development/test environment for commits
-  commit           Commits though to git
-
-For gold servers
-  merge-scheduled  Merges scheduled changes from the master branch to the
-                   production branch.
-                   (call on a cron)
-
-For puppet clients
-  clone        Clones and inits a client environment
-  init         Prepares a client environment after a "git clone"
-  pullapply    Updates and applies config updates
-EOF
