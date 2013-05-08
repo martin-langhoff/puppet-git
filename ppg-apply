@@ -1,0 +1,28 @@
+#!/bin/bash
+
+PPG_EXEC_PATH=$( dirname $(realpath "${BASH_SOURCE[0]}" ) )
+GIT_EXEC_PATH=$(git --exec-path)
+GIT_DIR=$(git rev-parse --git-dir)
+
+if [ -z "$GIT_DIR" ]; then
+	echo >&2 "Not in a git checkout"
+	exit 1
+fi
+
+## FIXME?: check whether these are overriden 
+PUPPETCONF=/etc/puppet.conf
+REPORT_PATH=/var/lib/puppet/state/last_run_report.yaml
+
+# puppet.conf syntax is compat with git config syntax
+# (both are INI style). How lucky can we be? :-)
+report_bool=$(git config -f $PUPPETCONF --bool --get agent.report) 
+
+# note: default is true
+if [ "$report_bool" = 'false' ]; then
+	echo >&2 "ERROR: reports are disabled!"
+	exit 1
+fi
+puppet apply --detailed-exitcodes $@
+pexit=$?
+
+# TODO: handle reports
