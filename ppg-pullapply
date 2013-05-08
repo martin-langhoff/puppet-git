@@ -1,0 +1,55 @@
+#!/bin/bash
+
+PPG_EXEC_PATH=$( dirname $(realpath "${BASH_SOURCE[0]}" ) )
+GIT_EXEC_PATH=$(git --exec-path)
+GIT_DIR=$(git rev-parse --git-dir)
+
+if [ -z "$GIT_DIR" ]; then
+	echo >&2 "Not in a git checkout"
+	exit 1
+fi
+
+headname=$(git rev-parse --symbolic-full-name --revs-only HEAD)
+
+if [[ "$headname" != "refs/heads/production" ]]; then
+	echo >&2 "WARNING: Not on production branch"
+fi
+
+initial_sha1=$(git rev-parse --revs-only HEAD)
+lastgood_sha1=$(git rev-parse --revs-only refs/heads/production-lastgood)
+
+# resilient wrt server availability...
+git fetch || echo "WARNING: error in git fetch"
+
+if [[ "$headname" = "refs/heads/production" ]]; then
+	$PPG_EXEC_PATH/ppg-update-production || exit 1
+else
+	if ! git merge --ff-only ; then
+		echo "ERROR: Failed to auto-merge with ff-only,"
+		echo "       perhaps the current branch needs to"
+		echo "       track a remote branch or you have dirty state."
+		echo "       You can merge by hand and use ppg-apply"
+	fi
+fi
+
+uptodate_sha1=$(git rev-parse --revs-only HEAD)
+
+if [[ "$uptodate_sha1" = "$lastgood_sha1" ]]; then
+	# nothing to do
+	exit 0
+fi
+
+echo "Executing command"
+echo
+echo "  "ppg-apply "$@"
+echo
+echo "Log of changes to apply" 
+echo
+if [ -n "$lastgood_sha1" ]; then
+	git log --oneline ${lastgood_sha1}..${uptodate_sha1}
+else
+	git log --oneline ${uptodate_sha1}
+fi
+echo
+$PPG_EXEC_PATH/ppg-apply "$@"
+exit $?
