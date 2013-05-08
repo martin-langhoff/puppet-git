@@ -51,5 +51,4 @@ else
 	git log --oneline ${uptodate_sha1}
 fi
 echo
-$PPG_EXEC_PATH/ppg-apply "$@"
-exit $?
+exec $PPG_EXEC_PATH/ppg-apply "$@"
