@@ -25,4 +25,24 @@ fi
 puppet apply --detailed-exitcodes $@
 pexit=$?
 
+# From http://docs.puppetlabs.com/man/apply.html
+# 0 means ?? (guess: no changes)
+# 2 means there were changes
+# 4 means failures
+# 6 means changes & failures
+if [[ $pexit -eq 00 ]] || [[ $pexit -eq 2 ]]; then
+	# mark as good
+	lastgood_sha1=$(git rev-parse --revs-only refs/heads/ppg/lastgood)
+	if [ -n "$lastgood_sha1" ]; then
+		git push . HEAD refs/heads/ppg/lastgood
+	else
+		# setup with reflog - may be handy
+		# for diagnosis
+		git branch -l refs/heads/ppg/lastgood HEAD
+	fi
+else
+	## TODO: do we want to warn in any way?
+	:
+fi
+
 # TODO: handle reports
