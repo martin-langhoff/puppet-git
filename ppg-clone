@@ -1,0 +1,36 @@
+#!/bin/bash
+
+if [ -z "$1" ]; then
+	echo >&2 "Need path to repository"
+fi
+
+basepath=$1
+
+# trim trailing slash
+if [[ "${basepath:${#basepath}-1:1}" = '/' ]]; then
+	basepath="${basepath:0:${#basepath}-1}"
+fi
+
+# trim trailing puppet.git
+if [[ "${basepath:${#basepath}-11:11}" = '/puppet.git' ]]; then
+	basepath="${basepath:0:${#basepath}-11}"
+fi
+
+if [[ -d "/etc/puppet/.git" ]]; then
+	echo >&2 "ERROR: /etc/puppet is already under git (or ppg)"
+	echo >&2 "       control, refusing to init."
+	exit 1
+fi
+
+echo "Cloning puppet and reports repos from $basepath to a temporary directory"
+git clone $basepath/puppet.git /etc/puppet.ppg.tmp.$$ || exit 1
+if ! git clone --bare $basepath/reports.git /etc/puppet.ppg.tmp.$$/.ppg ; then
+	rm -fr /etc/puppet.ppg.tmp.$$
+fi
+if [[ -d /etc/puppet ]]; then
+	ds=$(date -u --rfc-3339=date)
+	echo "Backing up /etc/puppet as /etc/puppet.backup.$ds"
+	mv /etc/puppet /etc/puppet.backup.$ds
+fi
+echo "Now moving puppet and reports dirs into /etc/puppet"
+mv /etc/puppet.ppg.tmp.$$ /etc/puppet
