@@ -23,10 +23,26 @@ if [[ -d "/etc/puppet/.git" ]]; then
 fi
 
 echo "Cloning puppet and reports repos from $basepath to a temporary directory"
+# we clone it "bare" to avoid auto-checkout, we'll switch that off
+# later...
 git clone $basepath/puppet.git /etc/puppet.ppg.tmp.$$ || exit 1
 if ! git clone --bare $basepath/reports.git /etc/puppet.ppg.tmp.$$/.ppg ; then
 	rm -fr /etc/puppet.ppg.tmp.$$
 fi
+# apply configs - quirky!
+# - switch off bare first. git config refuses to
+#   run if core.bare=true and core.worktree is set.
+# - set core.worktree last, it points to a dir that does
+#   not exist _yet_ and this breaks git config
+git --git-dir /etc/puppet.ppg.tmp.$$/.ppg \
+   config --bool core.bare false || exit 1
+git --git-dir /etc/puppet.ppg.tmp.$$/.ppg \
+   config --path user.name "ppg" || exit 1
+git --git-dir /etc/puppet.ppg.tmp.$$/.ppg \
+   config --path user.email "root@$(/usr/bin/hostname -f)" || exit 1
+git --git-dir /etc/puppet.ppg.tmp.$$/.ppg \
+   config --path core.worktree /etc/puppet/.ppg/scratch-worktree || exit 1
+
 if [[ -d /etc/puppet ]]; then
 	ds=$(date -u --rfc-3339=date)
 	echo "Backing up /etc/puppet as /etc/puppet.backup.$ds"
