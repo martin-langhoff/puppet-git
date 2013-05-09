@@ -10,7 +10,7 @@ if [ -z "$GIT_DIR" ]; then
 fi
 
 ## FIXME?: check whether these are overriden 
-PUPPETCONF=/etc/puppet.conf
+PUPPETCONF=/etc/puppet/puppet.conf
 REPORT_PATH=/var/lib/puppet/state/last_run_report.yaml
 
 # puppet.conf syntax is compat with git config syntax
@@ -46,3 +46,25 @@ else
 fi
 
 # TODO: handle reports
+hostname=$(/usr/bin/hostname -f)
+worktree='/etc/puppet/.ppg/scratch-worktree'
+mkdir -p ${worktree}/reports
+
+if ! git --git-dir /etc/puppet/.ppg rev-parse --revs-only \
+	refs/heads/${hostname} &>/dev/null ; then
+	:
+fi
+cp ${REPORT_PATH} ${worktree}/reports/${hostname}.yaml
+pushd ${worktree} &>/dev/null 
+git --git-dir /etc/puppet/.ppg update-index --add reports/${hostname}.yaml
+git --git-dir /etc/puppet/.ppg commit -m 'ppg apply report'
+
+headname=$(git --git-dir /etc/puppet/.ppg rev-parse --symbolic-full-name \
+	--revs-only HEAD)
+if [[ "${headname}" != "refs/heads/${hostname}" ]]; then
+	# we are in thefirst run, auto-created 'master' branch
+	git --git-dir /etc/puppet/.ppg branch ${hostname} HEAD
+	git --git-dir /etc/puppet/.ppg checkout ${hostname}
+	git --git-dir /etc/puppet/.ppg branch -D master
+fi
+popd &>/dev/null
