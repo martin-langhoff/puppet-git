@@ -23,13 +23,18 @@ if [[ -d "/etc/puppet/.git" ]]; then
 fi
 
 echo "Cloning puppet and reports repos from $basepath to a temporary directory"
+
 # we clone it "bare" to avoid auto-checkout, we'll switch that off
 # later...
 git clone $basepath/puppet.git /etc/puppet.ppg.tmp.$$ || exit 1
 if ! git clone --bare $basepath/reports.git /etc/puppet.ppg.tmp.$$/.ppg ; then
 	rm -fr /etc/puppet.ppg.tmp.$$
 fi
-# apply configs - quirky!
+
+## apply configs to .git
+echo '.ppg' >> /etc/puppet.ppg.tmp.$$/.git/info/exclude
+
+## apply configs to .ppg - quirky!
 # - switch off bare first. git config refuses to
 #   run if core.bare=true and core.worktree is set.
 # - set core.worktree last, it points to a dir that does
