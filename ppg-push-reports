@@ -1,0 +1,68 @@
+#!/bin/bash
+
+pushd /etc/puppet >/dev/null || exit 1
+
+PPG_EXEC_PATH=$( dirname $(realpath "${BASH_SOURCE[0]}" ) )
+GIT_EXEC_PATH=$(git --exec-path)
+GIT_DIR=$(git rev-parse --git-dir)
+
+if [ -z "$GIT_DIR" ]; then
+	echo >&2 "Not in a git checkout"
+	exit 1
+fi
+
+hostname=$(/usr/bin/hostname -f)
+
+## all ops on .ppg
+export GIT_DIR=/etc/puppet/.ppg
+git  push origin \
+	refs/heads/${hostname}:refs/heads/${hostname} || exit $?
+
+for head in $(git branch|sed 's/^..//'); do
+    # FIXME period
+    graft_sha1=$(git log --until=one.day.ago -n1 --pretty=format:%H ${head})
+	if [[ -z "$graft_sha1" ]]; then
+	    # nothing to prune
+	    continue
+	fi
+	# is it already grafted?
+	if grep -q "^${graft_sha1} " "${GIT_DIR}/info/grafts" &>/dev/null ; then
+		# don't duplicate the graft
+		continue
+	fi
+	some_grafted='true'
+	# prep empty commit
+	# skip git read-tree --empty, we get the same with
+	export GIT_INDEX_FILE=/tmp/ppg-emptytree.$$
+	empty_tree="$(git write-tree)"
+	rm ${GIT_INDEX_FILE}
+	unset GIT_INDEX_FILE
+	empty_commit=$(git commit-tree -m empty ${empty_tree})
+	echo "${graft_sha1} ${empty_commit}" >> ${GIT_DIR}/info/grafts
+done
+
+if [[ -z "$some_grafted" ]]; then
+	# nothing to do
+	exit 0
+fi
+
+# ppg-repack makes the unreachable objects "loose"
+# git prune --expire actually deletes them
+$PPG_EXEC_PATH/ppg-repack -AFfd
+git prune --expire=now
+
+### Cleanup stale grafts
+# current grafts points are reachable,
+# pruned graft points (made obsolete by a newer graft)
+# cannot be retrieved and git cat-file exit code is 128
+touch ${GIT_DIR}/info/grafts.tmp.$$
+while read line; do
+	graftpoint=$(echo "${line}" | cut -d' ' -f1)
+	if git cat-file commit ${graftpoint} &>/dev/null ; then
+		echo ${line} >> ${GIT_DIR}/info/grafts.tmp.$$
+	fi
+done < "${GIT_DIR}/info/grafts"
+
+if [ -s ${GIT_DIR}/info/grafts.tmp.$$ ]; then
+	mv ${GIT_DIR}/info/grafts.tmp.$$ ${GIT_DIR}/info/grafts
+fi
