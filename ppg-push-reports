@@ -6,6 +6,7 @@ PPG_EXEC_PATH=$( dirname $(realpath "${BASH_SOURCE[0]}" ) )
 GIT_EXEC_PATH=$(git --exec-path)
 GIT_DIR=$(git rev-parse --git-dir)
 
+### FIXME PROXYSERVER 
 if [ -z "$GIT_DIR" ]; then
 	echo >&2 "Not in a git checkout"
 	exit 1
@@ -14,13 +15,22 @@ fi
 hostname=$(/usr/bin/hostname -f)
 
 ## all ops on .ppg
+
+## FIXME PROXY SERVER 
 export GIT_DIR=/etc/puppet/.ppg
 git  push origin \
 	refs/heads/${hostname}:refs/heads/${hostname} || exit $?
 
+# reports are tiny, we can spool a month of them safely
+# if you want it shorter, configure it so :-)
+expiry="one.month.ago"
+config_expiry=$(git config --get ppg.reportexpiry)
+if [ -n "$config_expiry" ]; then
+	expiry="$config_expiry"
+fi
+
 for head in $(git branch|sed 's/^..//'); do
-    # FIXME period
-    graft_sha1=$(git log --until=one.day.ago -n1 --pretty=format:%H ${head})
+    graft_sha1=$(git log --until="$expiry" -n1 --pretty=format:%H ${head})
 	if [[ -z "$graft_sha1" ]]; then
 	    # nothing to prune
 	    continue
