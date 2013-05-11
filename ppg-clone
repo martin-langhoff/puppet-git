@@ -24,29 +24,25 @@ fi
 
 echo "Cloning puppet and reports repos from $basepath to a temporary directory"
 
-# we clone it "bare" to avoid auto-checkout, we'll switch that off
-# later...
+# the main puppet config repo
 git clone $basepath/puppet.git /etc/puppet.ppg.tmp.$$ || exit 1
-if ! git clone --bare $basepath/reports.git /etc/puppet.ppg.tmp.$$/.ppg ; then
+
+# and nested inside, reports repo
+if ! git --git-dir /etc/puppet.ppg.tmp.$$/.ppg init ; then
 	rm -fr /etc/puppet.ppg.tmp.$$
 fi
 
 ## apply configs to .git
 echo '.ppg' >> /etc/puppet.ppg.tmp.$$/.git/info/exclude
 
-## apply configs to .ppg - quirky!
-# - switch off bare first. git config refuses to
-#   run if core.bare=true and core.worktree is set.
-# - set core.worktree last, it points to a dir that does
-#   not exist _yet_ and this breaks git config
-git --git-dir /etc/puppet.ppg.tmp.$$/.ppg \
-   config --bool core.bare false || exit 1
-git --git-dir /etc/puppet.ppg.tmp.$$/.ppg \
-   config --path user.name "ppg" || exit 1
-git --git-dir /etc/puppet.ppg.tmp.$$/.ppg \
-   config --path user.email "root@$(/usr/bin/hostname -f)" || exit 1
-git --git-dir /etc/puppet.ppg.tmp.$$/.ppg \
-   config --path core.worktree /etc/puppet/.ppg/scratch-worktree || exit 1
+## apply configs to .ppg
+export GIT_DIR=/etc/puppet.ppg.tmp.$$/.ppg
+git remote add origin $basepath/reports.git
+git config --bool core.bare false || exit 1
+git config --path user.name "ppg" || exit 1
+git config --path user.email "root@$(/usr/bin/hostname -f)" || exit 1
+git config --path core.worktree /etc/puppet/.ppg/scratch-worktree || exit 1
+unset GIT_DIR
 
 if [[ -d /etc/puppet ]]; then
 	ds=$(date -u --rfc-3339=date)
@@ -55,3 +51,12 @@ if [[ -d /etc/puppet ]]; then
 fi
 echo "Now moving puppet and reports dirs into /etc/puppet"
 mv /etc/puppet.ppg.tmp.$$ /etc/puppet
+
+pushd /etc/puppet >/dev/null || exit 1
+if ! git branch -r | grep -q 'origin/production'; then
+	echo "No production branch yet; staying on master"
+else
+	git branch --track production origin/production
+	git checkout production
+fi
+popd >/dev/null
