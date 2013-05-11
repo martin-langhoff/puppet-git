@@ -52,23 +52,28 @@ hostname=$(/usr/bin/hostname -f)
 worktree='/etc/puppet/.ppg/scratch-worktree'
 mkdir -p ${worktree}/reports
 
-if ! git --git-dir /etc/puppet/.ppg rev-parse --revs-only \
+export GIT_DIR=/etc/puppet/.ppg
+pushd ${worktree} &>/dev/null 
+
+if ! git rev-parse --revs-only \
 	refs/heads/${hostname} &>/dev/null ; then
+	# it is going to be the first commit
+	# FIXME: any special handling?
 	:
 fi
 cp ${REPORT_PATH} ${worktree}/reports/${hostname}.yaml
-pushd ${worktree} &>/dev/null 
-git --git-dir /etc/puppet/.ppg update-index --add reports/${hostname}.yaml
-git --git-dir /etc/puppet/.ppg commit -m 'ppg apply report'
+git update-index --add reports/${hostname}.yaml
+git commit -m 'ppg apply report'
 
-headname=$(git --git-dir /etc/puppet/.ppg rev-parse --symbolic-full-name \
-	--revs-only HEAD)
+headname=$(git rev-parse --symbolic-full-name --revs-only HEAD)
 if [[ "${headname}" != "refs/heads/${hostname}" ]]; then
 	# we are in thefirst run, auto-created 'master' branch
-	git --git-dir /etc/puppet/.ppg branch ${hostname} HEAD
-	git --git-dir /etc/puppet/.ppg checkout ${hostname}
-	git --git-dir /etc/puppet/.ppg branch -D master
+	git branch ${hostname} HEAD
+	git checkout ${hostname}
+	git branch -D master
 fi
+
 popd &>/dev/null
+unset GIT_DIR
 
 popd &>/dev/null
