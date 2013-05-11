@@ -76,4 +76,6 @@ fi
 popd &>/dev/null
 unset GIT_DIR
 
+$PPG_EXEC_PATH/ppg-push-reports
+
 popd &>/dev/null
