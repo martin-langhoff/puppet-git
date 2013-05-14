@@ -1,0 +1,39 @@
+#!/bin/bash
+
+if [ -z "$1" ]; then
+	echo >&2 "Need path to repository"
+fi
+
+reportspath=$1
+
+# fetch from gold server
+git fetch
+
+for head in $(git branch -r|sed 's/  origin.//'); do
+	if $(git rev-parse --revs-only refs/heads/${head} &>/dev/null ); then
+		# we have a local head, walk deltas
+		logparams="${head}..origin/${head}"
+		makenewhead=false
+	else
+		logparams="origin/${head}"
+		makenewhead=true
+	fi
+	# !? - the last line of git log has no \n so tac returns a
+	# first line that runs together the last two lines. workaround injecting
+	# a newline...
+	for commit in $( (git log --pretty=format:%H ${logparams} && echo '') | tac); do
+		if [ "$makenewhead" = "false" ]; then
+			git checkout $head || exit 1
+			git merge --ff-only $head || exit 1
+		else
+			git branch ${head} ${commit} || exit 1
+		fi
+		# the branchname is the hostname
+		fname=reports/${head}.yaml
+
+		# magic
+		# FIXME if we error out we skip the commit!
+		curl -H "Content-Type: application/yaml" -X POST \
+			-d "@${fname}" "${reportspath}" || exit 1
+	done
+done
