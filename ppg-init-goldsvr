@@ -1,0 +1,27 @@
+#!/bin/bash
+
+if [[ -z "$1" ]]; then
+	echo >&2 "ERROR: needs base path parameter"
+	exit 1
+fi
+
+base_repo=$1
+
+mkdir -p $1
+echo "Preparing the repository for your Puppet configurations"
+git --git-dir=${base_repo}/puppet.git init --bare
+
+echo "Preparing the repository for reports"
+git --git-dir=${base_repo}/reports.git init --bare
+# this repo will never get a normal HEAD comit
+# so prep empty commit
+export GIT_INDEX_FILE=/tmp/ppg-emptytree.$$
+export GIT_DIR=${base_repo}/reports.git
+empty_tree="$(git write-tree)"
+rm ${GIT_INDEX_FILE}
+unset GIT_INDEX_FILE
+empty_commit=$(git commit-tree -m empty ${empty_tree})
+echo "${empty_commit}" >> ${GIT_DIR}/HEAD
+echo
+echo "Make reports.git writable by the user/group that clients"
+echo "use to connect."
