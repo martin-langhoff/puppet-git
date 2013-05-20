@@ -1,5 +1,9 @@
 #!/bin/bash
 
+if [[ -n "${PPG_DEBUG}" ]]; then
+	set -x
+fi
+
 GIT_DIR=$(git rev-parse --git-dir)
 
 if [ -z "$GIT_DIR" ]; then
