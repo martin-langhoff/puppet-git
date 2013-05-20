@@ -21,7 +21,8 @@ empty_tree="$(git write-tree)"
 rm ${GIT_INDEX_FILE}
 unset GIT_INDEX_FILE
 empty_commit=$(git commit-tree -m empty ${empty_tree})
-echo "${empty_commit}" >> ${GIT_DIR}/HEAD
+git update-ref refs/tags/ppg-emptycommit ${empty_commit}
+git symbolic-ref HEAD refs/tags/ppg-emptycommit
 echo
 echo "Make reports.git writable by the user/group that clients"
 echo "use to connect."
