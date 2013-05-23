@@ -24,7 +24,7 @@ export GIT_DIR=${base_repo}/reports.git
 empty_tree="$(git write-tree)"
 rm ${GIT_INDEX_FILE}
 unset GIT_INDEX_FILE
-empty_commit=$(git commit-tree -m empty ${empty_tree})
+empty_commit=$(echo empty | git commit-tree ${empty_tree})
 git update-ref refs/tags/ppg-emptycommit ${empty_commit}
 git symbolic-ref HEAD refs/tags/ppg-emptycommit
 echo

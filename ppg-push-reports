@@ -51,7 +51,7 @@ for head in $(git branch|sed 's/^..//'); do
 	empty_tree="$(git write-tree)"
 	rm ${GIT_INDEX_FILE}
 	unset GIT_INDEX_FILE
-	empty_commit=$(git commit-tree -m empty ${empty_tree})
+	empty_commit=$(echo empty | git commit-tree ${empty_tree})
 	echo "${graft_sha1} ${empty_commit}" >> ${GIT_DIR}/info/grafts
 done
 
