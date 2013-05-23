@@ -27,7 +27,8 @@ For puppet clients
 EOF
 }
 
-PPG_EXEC_PATH=$( dirname $(realpath "${BASH_SOURCE[0]}" ) )
+# RHEL6/CentOS6 does not have /usr/bin/realpath
+PPG_EXEC_PATH=$( dirname $(readlink -f "${BASH_SOURCE[0]}" ) )
 
 cmd=
 case "$#" in
