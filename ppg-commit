@@ -4,7 +4,7 @@ if [[ -n "${PPG_DEBUG}" ]]; then
 	set -x
 fi
 
-PPG_EXEC_PATH=$( dirname $(realpath "${BASH_SOURCE[0]}" ) )
+PPG_EXEC_PATH=$( dirname $(readlink -f "${BASH_SOURCE[0]}" ) )
 GIT_EXEC_PATH=$(git --exec-path)
 GIT_DIR=$(git rev-parse --git-dir)
 
