@@ -52,7 +52,7 @@ else
 fi
 
 # TODO: handle reports
-hostname=$(/usr/bin/hostname -f)
+hostname=$(/bin/hostname -f)
 worktree='/etc/puppet/.ppg/scratch-worktree'
 mkdir -p ${worktree}/reports
 

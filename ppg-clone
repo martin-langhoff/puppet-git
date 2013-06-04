@@ -44,7 +44,7 @@ export GIT_DIR=/etc/puppet.ppg.tmp.$$/.ppg
 git remote add origin $basepath/reports.git
 git config --bool core.bare false || exit 1
 git config --path user.name "ppg" || exit 1
-git config --path user.email "root@$(/usr/bin/hostname -f)" || exit 1
+git config --path user.email "root@$(/bin/hostname -f)" || exit 1
 git config --path core.worktree /etc/puppet/.ppg/scratch-worktree || exit 1
 unset GIT_DIR
 

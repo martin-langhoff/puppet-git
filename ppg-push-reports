@@ -16,7 +16,7 @@ if [ -z "$GIT_DIR" ]; then
 	exit 1
 fi
 
-hostname=$(/usr/bin/hostname -f)
+hostname=$(/bin/hostname -f)
 
 ## all ops on .ppg
 
