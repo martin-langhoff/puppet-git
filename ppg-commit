@@ -39,7 +39,7 @@ done
 
 # these may not exist
 production_sha1=$(git rev-parse --revs-only refs/heads/production 2>/dev/null)
-orig_production_sha1=$(git rev-parse --revs-only refs/heads/origin/production \
+orig_production_sha1=$(git rev-parse --revs-only origin/production \
 	2>/dev/null )
 
 if [ -n "$production_sha1" -a -n "$orig_production_sha1" ]; then
