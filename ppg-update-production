@@ -19,6 +19,10 @@ if [ -z "$production_sha1" ]; then
 	exit 0
 fi
 
+orig_production_sha1=$(git rev-parse --revs-only origin/production)
+# default target
+target_sha1=$orig_production_sha1
+
 nowepoch=$(date --utc +%s)
 for tag in $(git tag -l | grep '^ppg-sched-' | sort -r); do
 	# Sneaky sed: 's/-/ /3g' replaces the 3rd dash only
@@ -29,19 +33,16 @@ for tag in $(git tag -l | grep '^ppg-sched-' | sort -r); do
 	fi
 done
 
-if [ -z "$targettag" ]; then
-	# no relevant tags, nothing to do...'
-	exit
-fi
+if [ -n "$targettag" ]; then
+	target_sha1=$(git rev-parse --revs-only ${targettag}^{commit} ) || exit 1
 
-target_sha1=$(git rev-parse --revs-only ${targettag}^{commit} ) || exit 1
+	# perhaps origin/production is ahead of scheduled tags,
+	# if so, it wins...
 
-# perhaps origin/production is ahead of scheduled tags,
-# if so, it wins...
-orig_production_sha1=$(git rev-parse --revs-only refs/heads/origin/master)
-if [ -n "$orig_production_sha1" ]; then
-	if $PPG_EXEC_PATH/ppg-is-ancestor $targettag $orig_production_sha1 ; then
-		target_sha1=$orig_production_sha1
+	if [ -n "$orig_production_sha1" ]; then
+		if $PPG_EXEC_PATH/ppg-is-ancestor $targettag $orig_production_sha1 ; then
+			target_sha1=$orig_production_sha1
+		fi
 	fi
 fi
 
