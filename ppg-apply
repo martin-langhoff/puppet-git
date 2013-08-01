@@ -28,8 +28,13 @@ if [ "$report_bool" = 'false' ]; then
 	echo >&2 "ERROR: reports are disabled!"
 	exit 1
 fi
-puppet apply --detailed-exitcodes $@
-pexit=$?
+if [ -x /etc/puppet/local-puppet-apply ]; then
+    /etc/puppet/local-puppet-apply
+    pexit=?
+else 
+    puppet apply --detailed-exitcodes $@
+    pexit=$?
+fi
 
 # From http://docs.puppetlabs.com/man/apply.html
 # 0 means ?? (guess: no changes)
