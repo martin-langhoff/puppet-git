@@ -30,7 +30,7 @@ if [ "$report_bool" = 'false' ]; then
 fi
 if [ -x /etc/puppet/local-puppet-apply ]; then
     /etc/puppet/local-puppet-apply
-    pexit=?
+    pexit=$?
 else 
     puppet apply --detailed-exitcodes $@
     pexit=$?
