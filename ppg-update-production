@@ -51,12 +51,6 @@ if [ "$production_sha1" = "$target_sha1" ]; then
 	exit 0
 fi
 
-
-if $PPG_EXEC_PATH/ppg-is-ancestor $targettag $production_sha1 ; then
-	# nothing to do!
-	exit 0
-fi
-
 if ! $PPG_EXEC_PATH/ppg-is-ancestor $production_sha1 $target_sha1 ; then
 	echo "ERROR: production branch and $targettag have diverged!"
 	exit 1
