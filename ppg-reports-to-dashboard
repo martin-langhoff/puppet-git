@@ -8,36 +8,44 @@ if [ -z "$1" ]; then
 	echo >&2 "Need path to repository"
 fi
 
-reportspath=$1
+if [[ "$(git config --get --bool core.bare)" != 'true' ]]; then
+	echo >&2 "ERROR: must run on a bare repository"
+	exit 1
+fi
+
+reporturl=$(git config --get ppg.dashboardreporturl 2>/dev/null )
+if [ -n "$1" ]; then
+	reporturl="$1"
+fi
+if [ -z "$reporturl" ]; then
+	echo >&2 "ERROR: Need report URL as parameter or configuration. Set with"
+	echo >&2 "       git config --set ppg.dashboardreporturl http://host/path"
+	exit 1
+fi
 
 # fetch from gold server
 git fetch
 
-for head in $(git branch -r|sed 's/  origin.//'); do
-	if $(git rev-parse --revs-only refs/heads/${head} &>/dev/null ); then
+for head in $(git branch | grep -v '(no branch)'); do
+	if $(git rev-parse --revs-only --verify refs/ppg-track/${head} &>/dev/null ); then
 		# we have a local head, walk deltas
-		logparams="${head}..origin/${head}"
-		makenewhead=false
+		logparams="refs/ppg-track/${head}..refs/heads${head}"
 	else
-		logparams="origin/${head}"
-		makenewhead=true
+		logparams="refs/heads/${head}"
 	fi
 	# !? - the last line of git log has no \n so tac returns a
 	# first line that runs together the last two lines. workaround injecting
 	# a newline...
 	for commit in $( (git log --pretty=format:%H ${logparams} && echo '') | tac); do
-		if [ "$makenewhead" = "false" ]; then
-			git checkout $head || exit 1
-			git merge --ff-only $head || exit 1
-		else
-			git branch ${head} ${commit} || exit 1
-		fi
 		# the branchname is the hostname
 		fname=reports/${head}.yaml
+		# magic: 
+		#  - get the file without checking out the commit
+		#  - use curl to upload, REST-style
+		git show ${commit}:${fname} | \
+			echo curl -H 'Content-Type: application/yaml' -X POST \
+				-d '@-' "${reporturl}" || exit 1
 
-		# magic
-		# FIXME if we error out we skip the commit!
-		curl -H "Content-Type: application/yaml" -X POST \
-			-d "@${fname}" "${reportspath}" || exit 1
+		git push . $commit:refs/ppg-track/$head || exit 1
 	done
 done
