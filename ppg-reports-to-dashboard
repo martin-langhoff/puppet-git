@@ -13,39 +13,47 @@ if [[ "$(git config --get --bool core.bare)" != 'true' ]]; then
 	exit 1
 fi
 
-reporturl=$(git config --get ppg.dashboardreporturl 2>/dev/null )
-if [ -n "$1" ]; then
-	reporturl="$1"
-fi
-if [ -z "$reporturl" ]; then
-	echo >&2 "ERROR: Need report URL as parameter or configuration. Set with"
-	echo >&2 "       git config --set ppg.dashboardreporturl http://host/path"
-	exit 1
-fi
+trackdir=/var/lib/ppg/reports-import.track
+reportstmpdir=$(mktemp -d --tmpdir=/var/tmp ppg-reports-to-dashboard.XXXXXXX )
+seenany=no
 
-# fetch from gold server
-git fetch
-
-for head in $(git branch | grep -v '(no branch)'); do
-	if $(git rev-parse --revs-only --verify refs/ppg-track/${head} &>/dev/null ); then
+for head in $(git branch | grep -v '(no branch)' ); do
+	lastimportstate=
+	if [ -e ${trackdir}/${head} ] ; then
+		lastimportstate=$(<${trackdir}/${head})
+	fi
+	
+	if [ -n "${lastimportstate}" ] ;then 
 		# we have a local head, walk deltas
-		logparams="refs/ppg-track/${head}..refs/heads${head}"
+		logparams="${lastimportstate}..refs/heads/${head}"
 	else
-		logparams="refs/heads/${head}"
+		# FIXME:since
+		logparams=" --since=2.days.ago refs/heads/${head}"
 	fi
 	# !? - the last line of git log has no \n so tac returns a
 	# first line that runs together the last two lines. workaround injecting
 	# a newline...
 	for commit in $( (git log --pretty=format:%H ${logparams} && echo '') | tac); do
+		seenany=yes
 		# the branchname is the hostname
 		fname=reports/${head}.yaml
+		epoch=$(git show -s --pretty=format:%ct ${commit})
 		# magic: 
 		#  - get the file without checking out the commit
-		#  - use curl to upload, REST-style
-		git show ${commit}:${fname} | \
-			echo curl -H 'Content-Type: application/yaml' -X POST \
-				-d '@-' "${reporturl}" || exit 1
-
-		git push . $commit:refs/ppg-track/$head || exit 1
+		#  - store it in a tmpdir for later import with rake
+		git show ${commit}:${fname} > ${reportstmpdir}/${epoch}-$head.yaml
+		echo ${commit} > ${trackdir}/${head}
+		#FIXME git push . $commit:refs/ppg-track/$head || exit 1
 	done
 done
+if [ "${seenany}" = 'yes' ] ; then
+	pushd /usr/share/puppet-dashboard
+	rake RAILS_ENV=production reports:import REPORT_DIR=${reportstmpdir}
+	popd
+fi
+
+# the rake/import process needs the file to stick around for a while
+# and does not delete it when done, so this is fugly
+find /var/tmp -type d -name 'ppg-reports-to-dashboard.*' -user puppet-dashboard -mmin +120 -print0 | \
+     xargs -0 --no-run-if-empty -l 100 rm -fr 
+
