@@ -4,9 +4,8 @@ if [[ -n "${PPG_DEBUG}" ]]; then
 	set -x
 fi
 
-if [ -z "$1" ]; then
-	echo >&2 "Need path to repository"
-fi
+export GIT_DIR=${1:-/var/lib/ppg/reports-import.git}
+pushd ${GIT_DIR} >/dev/null
 
 if [[ "$(git config --get --bool core.bare)" != 'true' ]]; then
 	echo >&2 "ERROR: must run on a bare repository"
@@ -17,17 +16,18 @@ trackdir=/var/lib/ppg/reports-import.track
 reportstmpdir=$(mktemp -d --tmpdir=/var/tmp ppg-reports-to-dashboard.XXXXXXX )
 seenany=no
 
-for head in $(git branch | grep -v '(no branch)' ); do
+for head in $(git branch | /bin/grep -v '(no branch)' ); do
 	lastimportstate=
-	if [ -e ${trackdir}/${head} ] ; then
+	if [ -e ${trackdir}/${head} ]; then
 		lastimportstate=$(<${trackdir}/${head})
 	fi
 	
-	if [ -n "${lastimportstate}" ] ;then 
+	if [ -n "${lastimportstate}" ]; then 
 		# we have a local head, walk deltas
 		logparams="${lastimportstate}..refs/heads/${head}"
 	else
-		# FIXME:since
+		# Initial import will take only two days
+		# of old reports
 		logparams=" --since=2.days.ago refs/heads/${head}"
 	fi
 	# !? - the last line of git log has no \n so tac returns a
@@ -43,17 +43,16 @@ for head in $(git branch | grep -v '(no branch)' ); do
 		#  - store it in a tmpdir for later import with rake
 		git show ${commit}:${fname} > ${reportstmpdir}/${epoch}-$head.yaml
 		echo ${commit} > ${trackdir}/${head}
-		#FIXME git push . $commit:refs/ppg-track/$head || exit 1
 	done
 done
-if [ "${seenany}" = 'yes' ] ; then
-	pushd /usr/share/puppet-dashboard
-	rake RAILS_ENV=production reports:import REPORT_DIR=${reportstmpdir}
-	popd
+if [ "${seenany}" = 'yes' ]; then
+	pushd /usr/share/puppet-dashboard >/dev/null
+	rake RAILS_ENV=production reports:import REPORT_DIR=${reportstmpdir} | grep -v 'ETA:.*Importing:'
+	popd >/dev/null
 fi
 
 # the rake/import process needs the file to stick around for a while
 # and does not delete it when done, so this is fugly
 find /var/tmp -type d -name 'ppg-reports-to-dashboard.*' -user puppet-dashboard -mmin +120 -print0 | \
-     xargs -0 --no-run-if-empty -l 100 rm -fr 
+     xargs -0 --no-run-if-empty -L 100 rm -fr 
 
