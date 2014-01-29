@@ -40,11 +40,6 @@ fi
 
 uptodate_sha1=$(git rev-parse --revs-only HEAD)
 
-if [[ "$uptodate_sha1" = "$lastgood_sha1" ]]; then
-	# nothing to do
-	exit 0
-fi
-
 echo "Executing command"
 echo
 echo "  "ppg-apply "$@"
@@ -52,7 +47,16 @@ echo
 echo "Log of changes to apply" 
 echo
 if [ -n "$lastgood_sha1" ]; then
-	git log --oneline ${lastgood_sha1}..${uptodate_sha1}
+	if [[ "$uptodate_sha1" != "$lastgood_sha1" ]]; then
+		git log --oneline ${lastgood_sha1}..${uptodate_sha1}
+	else
+		echo "No changes in git"
+		## we could allow optional lazy runs
+		# if [ opt ]; then
+		#    echo "lazy run, exiting"
+		#	 exit 0
+		# fi
+	fi
 else
 	git log --oneline ${uptodate_sha1}
 fi
