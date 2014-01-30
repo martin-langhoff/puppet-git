@@ -45,7 +45,7 @@ if [[ $pexit -eq 00 ]] || [[ $pexit -eq 2 ]]; then
 	# mark as good
 	lastgood_sha1=$(git rev-parse --revs-only refs/heads/ppg/lastgood)
 	if [ -n "$lastgood_sha1" ]; then
-		git push . HEAD refs/heads/ppg/lastgood
+		git push . HEAD:refs/heads/ppg/lastgood
 	else
 		# setup with reflog - may be handy
 		# for diagnosis
