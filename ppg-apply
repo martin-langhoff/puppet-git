@@ -85,6 +85,6 @@ fi
 popd &>/dev/null
 unset GIT_DIR
 
-$PPG_EXEC_PATH/ppg-push-reports
-
-popd &>/dev/null
+# NOTE: callers rely on getting an error through if push-reports
+#       fails
+exec $PPG_EXEC_PATH/ppg-push-reports
