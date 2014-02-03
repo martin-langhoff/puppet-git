@@ -1,0 +1,10 @@
+#!/bin/bash
+#
+# Trivial rapper to control ssh options to be used with
+# GIT_SSH envvar/
+#
+if [[ -n "${PPG_DEBUG}" ]]; then
+	set -x
+fi
+
+exec ssh -o ConnectTimeout=10 "$@"

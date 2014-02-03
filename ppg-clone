@@ -1,5 +1,8 @@
 #!/bin/bash
 
+PPG_EXEC_PATH=$( dirname $(readlink -f "${BASH_SOURCE[0]}" ) )
+GIT_SSH="${PPG_EXEC_PATH}/ppg-ssh"
+
 if [[ -n "${PPG_DEBUG}" ]]; then
 	set -x
 fi
