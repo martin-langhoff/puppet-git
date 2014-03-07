@@ -69,10 +69,7 @@ if [[ -z "$some_grafted" ]]; then
 	exit 0
 fi
 
-# ppg-repack makes the unreachable objects "loose"
-# git prune --expire actually deletes them
-$PPG_EXEC_PATH/ppg-repack -Ad
-##TODO prune grafts based on git fsck --unreachable
+$PPG_EXEC_PATH/ppg-repack -ad
 git prune --expire=23.hours.ago
 
 ### Cleanup stale grafts
