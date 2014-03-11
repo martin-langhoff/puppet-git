@@ -64,11 +64,6 @@ for head in $(git branch|sed 's/^..//'); do
 	fi
 done
 
-if [[ -z "$some_grafted" ]]; then
-	# nothing to do
-	exit 0
-fi
-
 $PPG_EXEC_PATH/ppg-repack -ad
 git prune --expire=23.hours.ago
 
