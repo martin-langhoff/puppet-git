@@ -5,7 +5,8 @@ if [[ -n "${PPG_DEBUG}" ]]; then
 	set -x
 fi
 
-pushd /var/lib/ppg/reports.git >/dev/null || exit 1
+REPORTSDIR=${1:-/var/lib/ppg/reports.git}
+pushd ${REPORTSDIR} >/dev/null || exit 1
 
 PPG_EXEC_PATH=$( dirname $(readlink -f "${BASH_SOURCE[0]}" ) )
 GIT_EXEC_PATH=$(git --exec-path)
