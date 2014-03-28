@@ -3,6 +3,7 @@
 if [[ -n "${PPG_DEBUG}" ]]; then
 	set -x
 fi
+PPG_EXEC_PATH=$( dirname $(readlink -f "${BASH_SOURCE[0]}" ) )
 
 export GIT_DIR=${1:-/var/lib/ppg/reports-import.git}
 pushd ${GIT_DIR} >/dev/null
@@ -47,7 +48,7 @@ for head in $(git branch | /bin/grep -v '(no branch)' ); do
 done
 if [ "${seenany}" = 'yes' ]; then
 	# Trims reports to a single resource if the status = "unchanged"
-	terse_report=/usr/share/puppet-git/unchanged.report
+	terse_report=${PPG_EXEC_PATH}/unchanged.report
 	for report in $( /bin/ls $reportstmpdir/*.yaml) ;
 	do
 	report_status=$(/bin/grep -P '\bstatus: (?!unchanged)\E' $report)
@@ -56,8 +57,8 @@ if [ "${seenany}" = 'yes' ]; then
 	   report_time=$(echo time: $(date +"%Y-%m-%d %H:%M:%S.%6N %:z"))
 	   report_host=$(/bin/grep host: $report | /bin/sed -e 's/^[ \t]*//')
 	   /bin/cp $terse_report $report
-	   /bin/sed -i "s,REPLACEMEDATESTAMP,$report_time,g" $report
-	   /bin/sed -i "s,REPLACEMEHOSTNAME,$report_host,g" $report
+	   /bin/sed -i "s,REPLACEMEDATESTAMP,${report_time},g" $report
+	   /bin/sed -i "s,REPLACEMEHOSTNAME,${report_host},g" $report
 	fi
 	done 
 	pushd /usr/share/puppet-dashboard >/dev/null
