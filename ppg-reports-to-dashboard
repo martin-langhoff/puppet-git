@@ -47,20 +47,6 @@ for head in $(git branch | /bin/grep -v '(no branch)' ); do
 	done
 done
 if [ "${seenany}" = 'yes' ]; then
-	# Trims reports to a single resource if the status = "unchanged"
-	terse_report=${PPG_EXEC_PATH}/unchanged.report
-	for report in $( /bin/ls $reportstmpdir/*.yaml) ;
-	do
-	report_status=$(/bin/grep -P '\bstatus: (?!unchanged)\E' $report)
-	#if [[ ! -z $report_status ]]; then
-	if [[ -z $report_status ]]; then
-	   report_time=$(echo time: $(date +"%Y-%m-%d %H:%M:%S.%6N %:z"))
-	   report_host=$(/bin/grep host: $report | /bin/sed -e 's/^[ \t]*//')
-	   /bin/cp $terse_report $report
-	   /bin/sed -i "s,REPLACEMEDATESTAMP,${report_time},g" $report
-	   /bin/sed -i "s,REPLACEMEHOSTNAME,${report_host},g" $report
-	fi
-	done 
 	pushd /usr/share/puppet-dashboard >/dev/null
 	rake RAILS_ENV=production reports:import REPORT_DIR=${reportstmpdir} | grep -v 'ETA:.*Importing:'
 	popd >/dev/null
