@@ -1,0 +1,63 @@
+#!/bin/bash
+
+if [[ -n "${PPG_DEBUG}" ]]; then
+	set -x
+fi
+
+pushd /etc/puppet >/dev/null || exit 1
+
+PPG_EXEC_PATH=$( dirname $(readlink -f "${BASH_SOURCE[0]}" ) )
+GIT_EXEC_PATH=$(git --exec-path)
+GIT_DIR=$(git rev-parse --git-dir)
+GIT_SSH="${PPG_EXEC_PATH}/ppg-ssh"
+
+if [ -z "$GIT_DIR" ]; then
+	echo >&2 "Not in a git checkout"
+	exit 1
+fi
+
+# puppet.conf syntax is compat with git config syntax
+# (both are INI style). How lucky can we be? :-)
+report_bool=$(git config -f $PUPPETCONF --bool --get agent.report) 
+
+# note: default is true
+if [ "$report_bool" = 'false' ]; then
+	echo >&2 "ERROR: reports are disabled!"
+	exit 1
+fi
+
+hostname=$(/bin/hostname -f)
+worktree='/etc/puppet/.ppg/scratch-worktree'
+mkdir -p ${worktree}/reports
+
+export GIT_DIR=/etc/puppet/.ppg
+pushd ${worktree} &>/dev/null 
+
+if ! git rev-parse --revs-only \
+	refs/heads/${hostname} &>/dev/null ; then
+	# it is going to be the first commit
+	echo Refusing to fake first report >&2
+	exit 1
+fi
+
+cp ${PPG_EXEC_PATH}/unchanged.report ${worktree}/reports/${hostname}.yaml
+report_time=$(echo time: $(date +"%Y-%m-%d %H:%M:%S.%6N %:z"))
+/bin/sed -i "s,REPLACEMEDATESTAMP,${report_time},g" $report
+/bin/sed -i "s,REPLACEMEHOSTNAME,${hostname},g" $report
+git update-index --add reports/${hostname}.yaml
+git commit -m 'ppg apply report'
+
+headname=$(git rev-parse --symbolic-full-name --revs-only HEAD)
+if [[ "${headname}" != "refs/heads/${hostname}" ]]; then
+	# we are in thefirst run, auto-created 'master' branch
+	git branch ${hostname} HEAD
+	git checkout ${hostname}
+	git branch -D master
+fi
+
+popd &>/dev/null
+unset GIT_DIR
+
+# NOTE: callers rely on getting an error through if push-reports
+#       fails
+exec $PPG_EXEC_PATH/ppg-push-reports
