@@ -42,8 +42,8 @@ fi
 
 cp ${PPG_EXEC_PATH}/unchanged.report ${worktree}/reports/${hostname}.yaml
 report_time=$(echo time: $(date +"%Y-%m-%d %H:%M:%S.%6N %:z"))
-/bin/sed -i "s,REPLACEMEDATESTAMP,${report_time},g" $report
-/bin/sed -i "s,REPLACEMEHOSTNAME,${hostname},g" $report
+/bin/sed -i "s,REPLACEMEDATESTAMP,${report_time},g" ${worktree}/reports/${hostname}.yaml
+/bin/sed -i "s,REPLACEMEHOSTNAME,${hostname},g"     ${worktree}/reports/${hostname}.yaml
 git update-index --add reports/${hostname}.yaml
 git commit -m 'ppg apply report'
 
