@@ -42,7 +42,7 @@ git fetch || echo "WARNING: error in git fetch"
 if [[ "$headname" = "refs/heads/production" ]]; then
 	$PPG_EXEC_PATH/ppg-update-production || exit 1
 else
-	if ! git merge --ff-only ; then
+	if ! git pull --ff-only ; then
 		echo "ERROR: Failed to auto-merge with ff-only,"
 		echo "       perhaps the current branch needs to"
 		echo "       track a remote branch or you have dirty state."
