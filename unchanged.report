@@ -1,17 +1,17 @@
 --- !ruby/object:Puppet::Transaction::Report
   environment: production
-  REPLACEMEHOSTNAME
+  host: REPLACEMEHOSTNAME
   logs: 
     - !ruby/object:Puppet::Util::Log
       level: !ruby/sym notice
       tags: 
         - notice
-      REPLACEMEDATESTAMP
+      time: REPLACEMEDATESTAMP
       message: "Finished catalog run in 1.35 seconds"
       source: Puppet
   status: unchanged
   configuration_version: 1395086530
-  REPLACEMEDATESTAMP
+  time: REPLACEMEDATESTAMP
   report_format: 3
   resource_statuses: 
     File[/var/run/ppg/incron-trigger]: !ruby/object:Puppet::Resource::Status
@@ -27,7 +27,7 @@
         - rl_ppg
         - node
         - rl03-vid
-      REPLACEMEDATESTAMP
+      time: REPLACEMEDATESTAMP
       events: []
       out_of_sync: false
       changed: false
