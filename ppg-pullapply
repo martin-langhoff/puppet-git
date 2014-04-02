@@ -4,23 +4,15 @@ if [[ -n "${PPG_DEBUG}" ]]; then
 	set -x
 fi
 
-hostnametoint() {
-    # read the md5 as a sequence of unsigned ints
-    ints=$(hostname -s | openssl dgst -md5 -binary | od -d -N32 -w32 | head -n1 | cut -f2- -d' ')
-
-    sum=0
-    for val in $ints; do
-        sum=$(( $sum + $val ))
-    done
-    echo $sum
-}
-
-pushd /etc/puppet >/dev/null || exit 1
 
 PPG_EXEC_PATH=$( dirname $(readlink -f "${BASH_SOURCE[0]}" ) )
 GIT_EXEC_PATH=$(git --exec-path)
-GIT_DIR=$(git rev-parse --git-dir)
 GIT_SSH="${PPG_EXEC_PATH}/ppg-ssh"
+
+. PPG_EXEC_PATH/ppg-functions
+
+pushd /etc/puppet >/dev/null || exit 1
+GIT_DIR=$(git rev-parse --git-dir)
 
 if [ -z "$GIT_DIR" ]; then
 	echo >&2 "Not in a git checkout"
