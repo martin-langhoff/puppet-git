@@ -11,6 +11,8 @@ GIT_EXEC_PATH=$(git --exec-path)
 GIT_DIR=$(git rev-parse --git-dir)
 GIT_SSH="${PPG_EXEC_PATH}/ppg-ssh"
 
+. ${PPG_EXEC_PATH}/ppg-functions
+
 if [ -z "$GIT_DIR" ]; then
 	echo >&2 "Not in a git checkout"
 	exit 1
@@ -57,7 +59,7 @@ else
 	:
 fi
 
-hostname=$(/bin/hostname -f)
+hostname=$(xhostname)
 worktree='/etc/puppet/.ppg/scratch-worktree'
 mkdir -p ${worktree}/reports
 
