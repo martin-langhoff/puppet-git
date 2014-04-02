@@ -9,7 +9,7 @@ PPG_EXEC_PATH=$( dirname $(readlink -f "${BASH_SOURCE[0]}" ) )
 GIT_EXEC_PATH=$(git --exec-path)
 GIT_SSH="${PPG_EXEC_PATH}/ppg-ssh"
 
-. PPG_EXEC_PATH/ppg-functions
+. ${PPG_EXEC_PATH}/ppg-functions
 
 pushd /etc/puppet >/dev/null || exit 1
 GIT_DIR=$(git rev-parse --git-dir)
