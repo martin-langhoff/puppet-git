@@ -57,9 +57,12 @@ if [ -n "$lastgood_sha1" ]; then
 		echo "No changes in git"
 		this_hour=$(date +%H)
 		unconditional_hour=$(( ( $(hostnametoint) % 18 ) + 5 ))
-		# lazy 23 times a day
-		if [ ${this_hour} -ne ${unconditional_hour} ]; then
-			exec $PPG_EXEC_PATH/ppg-push-empty-report
+		# incrond triggered runs use PPG_NOTLAZY
+		if [[ -z "${PPG_NOTLAZY}" ]]; then
+			# lazy 23 times a day
+			if [ ${this_hour} -ne ${unconditional_hour} ]; then
+				exec $PPG_EXEC_PATH/ppg-push-empty-report
+			fi
 		fi
 	fi
 else
