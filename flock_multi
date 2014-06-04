@@ -1,0 +1,177 @@
+#!/bin/bash
+
+# Default to an uncommon flockerr because we need to
+# differentiate from cmd error to avoid bogus retries.
+# flock's default of 1 would lead to frequent misfires
+flockerr=254
+sleeptime=60
+
+lockdir=${FLOCK_MULTI_DIR:-"/mnt/cluster/lock"}
+lockconfdir=${FLOCK_MULTI_CONF_DIR:-"/mnt/cluster/conf/lock"}
+
+usage() {
+        echo "Usage:"
+        echo
+        echo " flock_multi [-h] [-v] [-E 200] [-s 20] [-w 60m ] heavy 4 heavyscript"
+        echo "Notes:"
+        echo " -w accepts m and h suffixes "
+}
+
+maybe_timeout() {
+    if [ -n "${timeout}" ]; then
+        if [ $(date +%s) -gt $timeout ]; then
+            echo "flock_multi timeout" >&2
+            exit $flockerr
+        fi
+    fi
+}
+
+is_number() {
+    # exit 0 if it's a number
+    echo $1 | grep -qE '^[[:digit:]]+$'
+    return $?
+}
+
+case "$#" in
+0)      usage
+		exit
+    ;;
+*)  while :; do 
+        case $1 in
+            -h|--help)
+                    usage
+                    exit 0;;
+            -v|--verbose)
+                    verbose=y
+                    shift;;
+            -E|--conflict-exit-code)
+                    flockerr=$2
+                    shift
+                    shift
+                    ;;
+            -s|--sleeptime)
+                    sleeptime=$2
+                    shift
+                    shift
+                    ;;
+            -w|--wait|--timeout)
+                    timeout=$2
+                    shift
+                    shift
+                    ;;
+            -*)
+                    echo >&2 "ERROR: Unknown option $1"
+                    usage
+                    exit 1
+                    ;;
+            *)
+                    break
+                    ;;
+            esac
+    done
+esac
+if [ "$#" -lt 3 ]; then
+	usage
+	exit
+fi
+
+lockname=$1 ; shift
+locknr=$1   ;shift
+
+if ! is_number "${sleeptime}"; then
+    echo "Bad sleptime - should be a number, in seconds" >&2
+    exit 1
+fi
+
+if ! is_number "${flockerr}"; then
+    echo "Bad conflict exit conflict-exit-code - should be a number" >&2
+    exit 1
+fi
+
+if [ -n "${timeout}" ]; then
+    # expand timeout suffixes
+    if [[ 'm' = "${timeout:${#timeout}-1:1}" ]]; then
+            timeout=$(( ${timeout:0:${#timeout}-1} * 60 ))
+    fi
+    if [[ 'h' = "${timeout:${#timeout}-1:1}" ]]; then
+            timeout=$(( ${timeout:0:${#timeout}-1} * 3600 ))
+    fi
+    if ! is_number "${timeout}"; then
+        echo "Bad timeout - should be a number, with optional 'm' and 'h' suffixes" >&2
+        exit 1
+    fi
+    # translate timeout to a timeout target time
+    timeout=$[ $(date +%s) + ${timeout} ]
+fi
+
+if ! is_number $locknr ; then
+   echo "Bad default concurrency parameter" >&2
+   exit 1
+fi
+
+lockfile="$lockdir/$lockname"
+
+# Get the value from file, if none, default to 4
+if [ -f $lockconfdir/$lockname ]; then
+    locknr_tmp=$(<${lockconfdir}/${lockname})
+    # tolerate empty file - but barf on bad value
+    if [ -n "${locknr_tmp}" ]; then
+        if ! is_number $locknr_tmp ; then
+            echo "Bad concurrency parameter in ${lockconfdir}/${lockname}" >&2
+            exit 1
+        fi
+        locknr=$locknr_tmp
+    fi
+fi
+if [ "${verbose}" = 'y' ]; then
+     echo Using $locknr locks
+fi
+
+## Is there a benefit to this?
+## maybe the subshell pid is good enough
+## after all, we'll use this to kill it...
+parent_pid=$$
+
+while true; do
+	for trylock in $(seq 1 $locknr | sort --random-sort); do
+        (
+            if ! flock -E $flockerr --nb 200; then
+                exit $flockerr
+            fi
+            if [ "${verbose}" = 'y' ]; then
+                echo Got ${lockfile}.${trylock}
+            fi
+            echo "$(hostname) PID: $parent_pid epoch: $(date +%s) $(date -u)" >&200
+            echo "$@" >&200 
+            $@
+            ret=$?
+
+            # cleanup - we use the filepath instead of the FD to truncate
+            echo >${lockfile}.${trylock}
+
+            exit $ret
+        ) 200>${lockfile}.${trylock}
+
+    	res=$?
+        if [ $res -ne $flockerr ]; then
+           exit $res
+    	fi
+        if [ "${verbose}" = 'y' ]; then
+            echo Bounced at ${lockfile}.${trylock}
+        fi
+    done
+    # all locks taken
+    maybe_timeout
+
+    # add a +/- 5% splay
+    if [ $sleeptime -gt 20 ]; then
+        actual_sleeptime=$[ $sleeptime +  ($RANDOM % ( $sleeptime / 10 ) - ( $sleeptime / 20) )  ]
+    else
+        actual_sleeptime=$sleeptime
+    fi
+    if [ "${verbose}" = 'y' ]; then
+        echo Waiting $actual_sleeptime
+    fi
+    sleep $actual_sleeptime
+    maybe_timeout
+done
