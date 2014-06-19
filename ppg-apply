@@ -37,12 +37,20 @@ if [ -x /etc/puppet/local-puppet-apply ]; then
 else 
     puppetcmd="puppet apply --detailed-exitcodes $@"
 fi
-# timeout at 50m, so the next hourly run has a go at it
-# sleep ~30s between tries at the flock
-# default 10 flocks, but will be overridden by /mnt/cluster/conf/lock/puppet
-${PPG_EXEC_PATH}/flock_multi --timeout 50m --sleeptime 30 --conflict-exit-code 200 puppet 10 \
-     $puppetcmd
-pexit=$?
+
+if /bin/mountpoint -q /mnt/cluster ; then
+	# timeout at 50m, so the next hourly run has a go at it
+	# sleep ~30s between tries at the flock
+	# default 10 flocks, but will be overridden by /mnt/cluster/conf/lock/puppet
+	${PPG_EXEC_PATH}/flock_multi --timeout 50m --sleeptime 30 --conflict-exit-code 200 puppet 10 \
+	     $puppetcmd
+	pexit=$?
+else
+	# some hosts don't have /mnt/cluster
+	# some need puppet to set it up first
+	$puppetcmd
+	pexit=$?
+fi
 
 # From http://docs.puppetlabs.com/man/apply.html
 # 0 means ?? (guess: no changes)
