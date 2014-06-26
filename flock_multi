@@ -1,177 +1,165 @@
-#!/bin/bash
+#!/usr/bin/env python
+#
+# Author: Martin Langhoff <martin.langhoff@remote-learner.net>
+# License: GPLv2
+#
 
-# Default to an uncommon flockerr because we need to
-# differentiate from cmd error to avoid bogus retries.
-# flock's default of 1 would lead to frequent misfires
-flockerr=254
-sleeptime=60
+from __future__ import with_statement
 
-lockdir=${FLOCK_MULTI_DIR:-"/mnt/cluster/lock"}
-lockconfdir=${FLOCK_MULTI_CONF_DIR:-"/mnt/cluster/conf/lock"}
+import os, sys
+import getopt
+import fcntl
+import re
+import random
+import subprocess
+import time
 
-usage() {
-        echo "Usage:"
-        echo
-        echo " flock_multi [-h] [-v] [-E 200] [-s 20] [-w 60m ] heavy 4 heavyscript"
-        echo "Notes:"
-        echo " -w accepts m and h suffixes "
-}
+def help():
+	return  "Usage:\n" \
+			" flock_multi [-h] [-v] [-E 200] [-s 20] [-w 60m ] heavy 4 heavyscript \n" \
+			"Notes: \n" \
+			" -w accepts m and h suffixes\n"
 
-maybe_timeout() {
-    if [ -n "${timeout}" ]; then
-        if [ $(date +%s) -gt $timeout ]; then
-            echo "flock_multi timeout" >&2
-            exit $flockerr
-        fi
-    fi
-}
+def arg_to_secs(a):
+	if isinstance(a, (int, long)) or re.match('\d+$', a):
+		return int(a)
+	m = re.match('(\d+)m$', a)
+	if m:
+		return (int(m.group(1)) * 60)
+	m = re.match('(\d+)h$', a)
+	if m:
+		return (int(m.group(1)) * 60 * 60)
+	sys.stderr.write("ERROR: timeout parameter not an integer!\n")
+	sys.exit(flockerr)
 
-is_number() {
-    # exit 0 if it's a number
-    echo $1 | grep -qE '^[[:digit:]]+$'
-    return $?
-}
+def maybe_timeout(timeout, flockerr):
+	if timeout > 0:
+		if timeout < time.time():
+			sys.stderr.write("ERROR: flock_multi timeout\n")
+			sys.exit(flockerr)
 
-case "$#" in
-0)      usage
-		exit
-    ;;
-*)  while :; do 
-        case $1 in
-            -h|--help)
-                    usage
-                    exit 0;;
-            -v|--verbose)
-                    verbose=y
-                    shift;;
-            -E|--conflict-exit-code)
-                    flockerr=$2
-                    shift
-                    shift
-                    ;;
-            -s|--sleeptime)
-                    sleeptime=$2
-                    shift
-                    shift
-                    ;;
-            -w|--wait|--timeout)
-                    timeout=$2
-                    shift
-                    shift
-                    ;;
-            -*)
-                    echo >&2 "ERROR: Unknown option $1"
-                    usage
-                    exit 1
-                    ;;
-            *)
-                    break
-                    ;;
-            esac
-    done
-esac
-if [ "$#" -lt 3 ]; then
-	usage
-	exit
-fi
+def main():
+	# vars overriden from env
+	lockdir = '/mnt/cluster/lock'
+	confdir = '/mtn/cluster/conf/lock'
+	if 'FLOCK_MULTI_DIR' in os.environ:
+		lockdir = os.environ['FLOCK_MULTI_DIR']
+	if 'FLOCK_MULTI_CONF_DIR' in os.environ:
+		confdir = os.environ['FLOCK_MULTI_CONF_DIR']
 
-lockname=$1 ; shift
-locknr=$1   ;shift
+	try:
+		long_opts = ["help", "verbose", "conflict-exit-code=", "sleep=", "wait=", "timeout="]
+		opts, args = getopt.getopt(sys.argv[1:], "hvE:s:w:", long_opts)
+	except getopt.GetoptError:
+		sys.stderr.write("ERROR: Invalid parameter!\n")
+		sys.stderr.write(help())
+		sys.exit(200)
 
-if ! is_number "${sleeptime}"; then
-    echo "Bad sleptime - should be a number, in seconds" >&2
-    exit 1
-fi
+	if len(args) < 3: 
+		sys.stderr.write("ERROR: At least 3 parameters needed.\n")
+		sys.stderr.write(help())
+		sys.exit(200)
 
-if ! is_number "${flockerr}"; then
-    echo "Bad conflict exit conflict-exit-code - should be a number" >&2
-    exit 1
-fi
+	verbose   = False
+	flockerr  = 200
+	sleeptime = 60
+	timeout   = 0
 
-if [ -n "${timeout}" ]; then
-    # expand timeout suffixes
-    if [[ 'm' = "${timeout:${#timeout}-1:1}" ]]; then
-            timeout=$(( ${timeout:0:${#timeout}-1} * 60 ))
-    fi
-    if [[ 'h' = "${timeout:${#timeout}-1:1}" ]]; then
-            timeout=$(( ${timeout:0:${#timeout}-1} * 3600 ))
-    fi
-    if ! is_number "${timeout}"; then
-        echo "Bad timeout - should be a number, with optional 'm' and 'h' suffixes" >&2
-        exit 1
-    fi
-    # translate timeout to a timeout target time
-    timeout=$[ $(date +%s) + ${timeout} ]
-fi
+	for o, a in opts:
+		if o in ("-v", "--verbose") :
+			verbose = True
+		elif o in ("-h", "--help"):
+			usage()
+			sys.exit()
+		elif o in ("-E", "--conflict-exit-code"):
+			flockerr = int(a)
+		elif o in ("-s", "--sleeptime"):
+			sleeptime = int(a)
+		elif o in ("-w", "--wait", "--timeout"):
+			timeout = float(arg_to_secs(a)) + time.time()
+		else:
+			assert False, "unhandled option"
+	# argument params
+	lockname = args.pop(0)
+	maxlocks = int(args.pop(0))
+	cmd = args
 
-if ! is_number $locknr ; then
-   echo "Bad default concurrency parameter" >&2
-   exit 1
-fi
+	conffile = os.path.join(confdir, lockname)
+	try:
+		if os.path.exists(conffile):
+			tmpval = int(open(conffile).read())
+			maxlocks= tmpval
+	except:
+		sys.stderr.write("WARNING: Ignoring invalid value in %s\n" % conffile)
+	
+	if verbose:
+		print "Using %s maxlocks" % maxlocks
 
-lockfile="$lockdir/$lockname"
+	mypid = os.getpid()
+	hostname = os.uname()[1]
 
-# Get the value from file, if none, default to 4
-if [ -f $lockconfdir/$lockname ]; then
-    locknr_tmp=$(<${lockconfdir}/${lockname})
-    # tolerate empty file - but barf on bad value
-    if [ -n "${locknr_tmp}" ]; then
-        if ! is_number $locknr_tmp ; then
-            echo "Bad concurrency parameter in ${lockconfdir}/${lockname}" >&2
-            exit 1
-        fi
-        locknr=$locknr_tmp
-    fi
-fi
-if [ "${verbose}" = 'y' ]; then
-     echo Using $locknr locks
-fi
+	gotlock = False
+	cmdexit = 0
+	# cast to have better splay
+	sleeptime = float(sleeptime)
 
-## Is there a benefit to this?
-## maybe the subshell pid is good enough
-## after all, we'll use this to kill it...
-parent_pid=$$
+	while True:
+		locks = range(1, maxlocks+1)
+		if len(locks) > 1:
+			random.shuffle(locks)
+		for trylock in locks:
+			# print "trying %s" %trylock
+			trylockfn = os.path.join(lockdir, lockname + '.%s' % trylock)
+			# we open for "append", and only move to truncate the
+			# file if we succeed in getting the flock
+			with open(trylockfn, 'a') as fh:
+				try:
+					fcntl.flock(fh, fcntl.LOCK_EX|fcntl.LOCK_NB)
+					fh.seek(0)
+					fh.truncate(0)
+					fh.flush()
+					gotlock = True
+					if verbose:
+						print "Got %s" % trylockfn
+					t = time.gmtime()
+					fh.write("%s PID: %s epoch: %s %s\n" %
+								 (hostname, mypid, time.time(), time.strftime("%a, %d %b %Y %H:%M:%S +0000", t)))		
+					fh.write(' '.join(cmd))
+					fh.write("\n")
+					fh.flush()
+					# execute the command requested
+					cmdexit = subprocess.call(cmd)
+				except IOError: # failed to get lock, nonfatal
+					pass
+				except OSError as e:
+					if e.errno == 2:
+						sys.stderr.write("ERROR: No such file or directory: %s\n" % cmd[0])
+						sys.exit(flockerr)
+					else:
+						raise
+				finally:
+					# runs on _all_ exceptions - IOError, OSError and KeyboardInterrupt
+					# truncate flock'd file on completion
+					if gotlock:
+						fh.seek(0)
+						fh.truncate(0)
+						fh.flush()
 
-while true; do
-	for trylock in $(seq 1 $locknr | sort --random-sort); do
-        (
-            if ! flock -E $flockerr --nb 200; then
-                exit $flockerr
-            fi
-            if [ "${verbose}" = 'y' ]; then
-                echo Got ${lockfile}.${trylock}
-            fi
-            echo "$(hostname) PID: $parent_pid epoch: $(date +%s) $(date -u)" >&200
-            echo "$@" >&200 
-            $@
-            ret=$?
+			if gotlock:
+				sys.exit(cmdexit)
 
-            # cleanup - we use the filepath instead of the FD to truncate
-            echo >${lockfile}.${trylock}
+		# all locks taken
+		maybe_timeout(timeout, flockerr)
 
-            exit $ret
-        ) 200>${lockfile}.${trylock}
+		splay = sleeptime / 10
+		actual_sleep = sleeptime + random.uniform(0 - splay, splay)
+		if verbose:
+			print "Tried all locks - sleeping %s" % actual_sleep
+		time.sleep(actual_sleep)
+		maybe_timeout(timeout, flockerr)
 
-    	res=$?
-        if [ $res -ne $flockerr ]; then
-           exit $res
-    	fi
-        if [ "${verbose}" = 'y' ]; then
-            echo Bounced at ${lockfile}.${trylock}
-        fi
-    done
-    # all locks taken
-    maybe_timeout
-
-    # add a +/- 5% splay
-    if [ $sleeptime -gt 20 ]; then
-        actual_sleeptime=$[ $sleeptime +  ($RANDOM % ( $sleeptime / 10 ) - ( $sleeptime / 20) )  ]
-    else
-        actual_sleeptime=$sleeptime
-    fi
-    if [ "${verbose}" = 'y' ]; then
-        echo Waiting $actual_sleeptime
-    fi
-    sleep $actual_sleeptime
-    maybe_timeout
-done
+if __name__ == '__main__':
+	try:
+		main()
+	except KeyboardInterrupt: # user hit control-C
+		sys.exit(130)
