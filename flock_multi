@@ -41,7 +41,7 @@ def maybe_timeout(timeout, flockerr):
 def main():
 	# vars overriden from env
 	lockdir = '/mnt/cluster/lock'
-	confdir = '/mtn/cluster/conf/lock'
+	confdir = '/mnt/cluster/conf/lock'
 	if 'FLOCK_MULTI_DIR' in os.environ:
 		lockdir = os.environ['FLOCK_MULTI_DIR']
 	if 'FLOCK_MULTI_CONF_DIR' in os.environ:
