@@ -48,10 +48,10 @@ def main():
 		confdir = os.environ['FLOCK_MULTI_CONF_DIR']
 
 	try:
-		long_opts = ["help", "verbose", "conflict-exit-code=", "sleep=", "wait=", "timeout="]
+		long_opts = ["help", "verbose", "conflict-exit-code=", "sleeptime=", "wait=", "timeout="]
 		opts, args = getopt.getopt(sys.argv[1:], "hvE:s:w:", long_opts)
-	except getopt.GetoptError:
-		sys.stderr.write("ERROR: Invalid parameter!\n")
+	except getopt.GetoptError, e:
+		sys.stderr.write("ERROR: Invalid parameter: %s\n", e[0])
 		sys.stderr.write(help())
 		sys.exit(200)
 
@@ -78,7 +78,7 @@ def main():
 		elif o in ("-w", "--wait", "--timeout"):
 			timeout = float(arg_to_secs(a)) + time.time()
 		else:
-			assert False, "unhandled option"
+			assert False, "unhandled option %s" % o
 	# argument params
 	lockname = args.pop(0)
 	maxlocks = int(args.pop(0))
