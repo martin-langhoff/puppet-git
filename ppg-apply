@@ -71,6 +71,9 @@ if [[ $pexit -eq 00 ]] || [[ $pexit -eq 2 ]]; then
 		# for diagnosis
 		git branch -l refs/heads/ppg/lastgood HEAD
 	fi
+elif [[ $pexit -eq 200 ]]; then
+	echo flock_multi error!
+	exit $pexit	
 else
 	## TODO: do we want to warn in any way?
 	:
