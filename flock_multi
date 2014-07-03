@@ -7,6 +7,7 @@
 from __future__ import with_statement
 
 import os, sys
+import traceback
 import getopt
 import fcntl
 import re
@@ -16,7 +17,7 @@ import time
 
 def help():
 	return  "Usage:\n" \
-			" flock_multi [-h] [-v] [-E 200] [-s 20] [-w 60m ] heavy 4 heavyscript \n" \
+			" flock_multi [-h] [-v] [-E 200] [-T 201] [-s 20] [-w 60m ] heavy 4 heavyscript \n" \
 			"Notes: \n" \
 			" -w accepts m and h suffixes\n"
 
@@ -167,3 +168,6 @@ if __name__ == '__main__':
 		main()
 	except KeyboardInterrupt: # user hit control-C
 		sys.exit(130)
+	except: # all other exceptions
+		traceback.print_exc(file=sys.stdout)
+		exit(200)
