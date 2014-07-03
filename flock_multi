@@ -50,10 +50,10 @@ def main():
 
 	try:
 		long_opts = ["help", "verbose", "conflict-exit-code=",
-					 "timeout-exit-code=" "sleeptime=", "wait=", "timeout="]
+					 "timeout-exit-code=", "sleeptime=", "wait=", "timeout="]
 		opts, args = getopt.getopt(sys.argv[1:], "hvE:T:s:w:", long_opts)
 	except getopt.GetoptError, e:
-		sys.stderr.write("ERROR: Invalid parameter: %s\n", e[0])
+		sys.stderr.write("ERROR: Invalid parameter: %s\n" % e[0])
 		sys.stderr.write(help())
 		sys.exit(200)
 
