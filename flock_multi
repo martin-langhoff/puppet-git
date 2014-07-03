@@ -39,19 +39,33 @@ def maybe_timeout(timeout, exitcode):
 			sys.stderr.write("ERROR: flock_multi timeout\n")
 			sys.exit(exitcode)
 
+def maybe_remove_qmonfile():
+	global qmonfname
+	if qmonfname and os.path.exists(qmonfname):
+		try:
+			os.remove(qmonfname)
+		except:
+			# soft error
+			traceback.print_exc(file=sys.stderr)
+
 def main():
 	# vars overriden from env
-	lockdir = '/mnt/cluster/lock'
 	confdir = '/mnt/cluster/conf/lock'
-	if 'FLOCK_MULTI_DIR' in os.environ:
-		lockdir = os.environ['FLOCK_MULTI_DIR']
 	if 'FLOCK_MULTI_CONF_DIR' in os.environ:
 		confdir = os.environ['FLOCK_MULTI_CONF_DIR']
 
+	lockdir = '/mnt/cluster/lock'
+	if 'FLOCK_MULTI_DIR' in os.environ:
+		lockdir = os.environ['FLOCK_MULTI_DIR']
+
+	qmondir= os.path.join(lockdir,'queuemonitor')
+	if 'FLOCK_MULTI_QMON_DIR' in os.environ:
+		qmondir = os.environ['FLOCK_MULTI_QMON_DIR']
+
 	try:
-		long_opts = ["help", "verbose", "conflict-exit-code=",
+		long_opts = ["help", "verbose", "queuemonitor", "qmon", "conflict-exit-code=",
 					 "timeout-exit-code=", "sleeptime=", "wait=", "timeout="]
-		opts, args = getopt.getopt(sys.argv[1:], "hvE:T:s:w:", long_opts)
+		opts, args = getopt.getopt(sys.argv[1:], "hvQE:T:s:w:", long_opts)
 	except getopt.GetoptError, e:
 		sys.stderr.write("ERROR: Invalid parameter: %s\n" % e[0])
 		sys.stderr.write(help())
@@ -63,6 +77,7 @@ def main():
 		sys.exit(200)
 
 	verbose   = False
+	qmon      = False
 	flockerr  = 200
 	timeouterr= 201
 	sleeptime = 60
@@ -71,6 +86,8 @@ def main():
 	for o, a in opts:
 		if o in ("-v", "--verbose") :
 			verbose = True
+		elif o in ("-Q", "--queuemonitor", "--qmon") :
+			qmon = True
 		elif o in ("-h", "--help"):
 			usage()
 			sys.exit()
@@ -108,6 +125,18 @@ def main():
 	# cast to have better splay
 	sleeptime = float(sleeptime)
 
+	global qmonfname
+
+	if qmon:
+		try:
+			qmonfname = os.path.join(qmondir, '%s:%s:%s' % (lockname, hostname, mypid))
+			open(qmonfname, 'w').close() # "touch"
+			if verbose:
+				print "qmonfile %s" % qmonfname
+		except:
+			# soft error
+			traceback.print_exc(file=sys.stderr)
+
 	while True:
 		locks = range(1, maxlocks+1)
 		if len(locks) > 1:
@@ -132,6 +161,7 @@ def main():
 					fh.write(' '.join(cmd))
 					fh.write("\n")
 					fh.flush()
+					maybe_remove_qmonfile()
 					# execute the command requested
 					cmdexit = subprocess.call(cmd)
 				except IOError: # failed to get lock, nonfatal
@@ -164,6 +194,7 @@ def main():
 		maybe_timeout(timeout, timeouterr)
 
 if __name__ == '__main__':
+	qmonfname = None
 	try:
 		main()
 	except KeyboardInterrupt: # user hit control-C
@@ -171,3 +202,5 @@ if __name__ == '__main__':
 	except Exception: # all "interesting" exceptions, but not SystemExit 
 		traceback.print_exc(file=sys.stdout)
 		exit(200)
+	finally:
+		maybe_remove_qmonfile()
