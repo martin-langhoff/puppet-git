@@ -58,8 +58,8 @@ fi
 # 4 means failures
 # 6 means changes & failures
 # Also
-# 200 means flock_multi could not grab a flock
-# 1 means other errors in flock multi (bad param, etc)
+# 200 means flock_multi found an error
+# 201 means flock_multi timed out waiting for the flock
 
 if [[ $pexit -eq 00 ]] || [[ $pexit -eq 2 ]]; then
 	# mark as good
@@ -74,6 +74,9 @@ if [[ $pexit -eq 00 ]] || [[ $pexit -eq 2 ]]; then
 elif [[ $pexit -eq 200 ]]; then
 	echo flock_multi error!
 	exit $pexit	
+elif [[ $pexit -eq 201 ]]; then # soft error
+	echo flock_multi timed out
+	exit 0
 else
 	## TODO: do we want to warn in any way?
 	:
