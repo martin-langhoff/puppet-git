@@ -32,11 +32,11 @@ def arg_to_secs(a):
 	sys.stderr.write("ERROR: timeout parameter not an integer!\n")
 	sys.exit(flockerr)
 
-def maybe_timeout(timeout, flockerr):
+def maybe_timeout(timeout, exitcode):
 	if timeout > 0:
 		if timeout < time.time():
 			sys.stderr.write("ERROR: flock_multi timeout\n")
-			sys.exit(flockerr)
+			sys.exit(exitcode)
 
 def main():
 	# vars overriden from env
@@ -48,8 +48,9 @@ def main():
 		confdir = os.environ['FLOCK_MULTI_CONF_DIR']
 
 	try:
-		long_opts = ["help", "verbose", "conflict-exit-code=", "sleeptime=", "wait=", "timeout="]
-		opts, args = getopt.getopt(sys.argv[1:], "hvE:s:w:", long_opts)
+		long_opts = ["help", "verbose", "conflict-exit-code=",
+					 "timeout-exit-code=" "sleeptime=", "wait=", "timeout="]
+		opts, args = getopt.getopt(sys.argv[1:], "hvE:T:s:w:", long_opts)
 	except getopt.GetoptError, e:
 		sys.stderr.write("ERROR: Invalid parameter: %s\n", e[0])
 		sys.stderr.write(help())
@@ -62,6 +63,7 @@ def main():
 
 	verbose   = False
 	flockerr  = 200
+	timeouterr= 201
 	sleeptime = 60
 	timeout   = 0
 
@@ -73,6 +75,8 @@ def main():
 			sys.exit()
 		elif o in ("-E", "--conflict-exit-code"):
 			flockerr = int(a)
+		elif o in ("-T", "--timeout-exit-code"):
+			timeouterr = int(a)
 		elif o in ("-s", "--sleeptime"):
 			sleeptime = int(a)
 		elif o in ("-w", "--wait", "--timeout"):
@@ -149,14 +153,14 @@ def main():
 				sys.exit(cmdexit)
 
 		# all locks taken
-		maybe_timeout(timeout, flockerr)
+		maybe_timeout(timeout, timeouterr)
 
 		splay = sleeptime / 10
 		actual_sleep = sleeptime + random.uniform(0 - splay, splay)
 		if verbose:
 			print "Tried all locks - sleeping %s" % actual_sleep
 		time.sleep(actual_sleep)
-		maybe_timeout(timeout, flockerr)
+		maybe_timeout(timeout, timeouterr)
 
 if __name__ == '__main__':
 	try:
