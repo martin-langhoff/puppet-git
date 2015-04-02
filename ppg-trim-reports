@@ -65,7 +65,7 @@ for head in $(git branch|sed 's/^..//'); do
 	fi
 done
 
-$PPG_EXEC_PATH/ppg-repack -ad
+${PPG_EXEC_PATH}/ppg-repack -ad
 git prune --expire=23.hours.ago
 
 ### Cleanup stale grafts
