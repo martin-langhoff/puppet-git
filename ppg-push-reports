@@ -19,67 +19,20 @@ if [ -z "$GIT_DIR" ]; then
 	exit 1
 fi
 
+reportsdir='/etc/puppet/.ppg/reports'
 hostname=$(xhostname)
 
-## all ops on .ppg
+# the reports go to a "reports" directory right next to
+# the puppet remote url. we must mangle the url a bit to make
+# it edible to rsync/scp
+# - remove the ssh:// prefix
+# - add a : after hostname, before the first slash
+remoteurl=$(git config --get remote.origin.url | sed 's!^ssh://!!;s!/!:/!')
+remoteurl=$(dirname ${remoteurl})/reports
 
-## FIXME PROXY SERVER 
-export GIT_DIR=/etc/puppet/.ppg
-git  push origin \
-	refs/heads/${hostname}:refs/heads/${hostname} || exit $?
+rsync -e ssh -q ${reportsdir}/ $remoteurl/
+rsyncexit=$?
 
-# reports are tiny, we can spool a month of them safely
-# if you want it shorter, configure it so :-)
-expiry="one.month.ago"
-config_expiry=$(git config --get ppg.reportexpiry)
-if [ -n "$config_expiry" ]; then
-	expiry="$config_expiry"
-fi
-
-for head in $(git branch|sed 's/^..//'); do
-    graft_sha1=$(git log --until="$expiry" -n1 --pretty=format:%H ${head})
-	if [[ -z "$graft_sha1" ]]; then
-	    # nothing to prune
-	    continue
-	fi
-	# is it already grafted?
-	if grep -q "^${graft_sha1} " "${GIT_DIR}/info/grafts" &>/dev/null ; then
-		# don't duplicate the graft
-		continue
-	fi
-	some_grafted='true'
-	# prep empty commit
-	# skip git read-tree --empty, we get the same with
-	export GIT_INDEX_FILE=/tmp/ppg-emptytree.$$
-	empty_tree="$(git write-tree)"
-	rm ${GIT_INDEX_FILE}
-	unset GIT_INDEX_FILE
-	empty_commit=$(echo empty | git commit-tree ${empty_tree})
-	echo "${graft_sha1} ${empty_commit}" >> ${GIT_DIR}/info/grafts
-done
-
-if [[ -z "$some_grafted" ]]; then
-	# nothing to do
-	exit 0
-fi
-
-# ppg-repack makes the unreachable objects "loose"
-# git prune --expire actually deletes them
-$PPG_EXEC_PATH/ppg-repack -AFfd
-git prune --expire=now
-
-### Cleanup stale grafts
-# current grafts points are reachable,
-# pruned graft points (made obsolete by a newer graft)
-# cannot be retrieved and git cat-file exit code is 128
-touch ${GIT_DIR}/info/grafts.tmp.$$
-while read line; do
-	graftpoint=$(echo "${line}" | cut -d' ' -f1)
-	if git cat-file commit ${graftpoint} &>/dev/null ; then
-		echo ${line} >> ${GIT_DIR}/info/grafts.tmp.$$
-	fi
-done < "${GIT_DIR}/info/grafts"
-
-if [ -s ${GIT_DIR}/info/grafts.tmp.$$ ]; then
-	mv ${GIT_DIR}/info/grafts.tmp.$$ ${GIT_DIR}/info/grafts
+if [ $rsyncexit -eq 0 ]; then
+	find ${reportsdir}/ -type f -print0 | xargs -0 --no-run-if-empty rm 
 fi
