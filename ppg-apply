@@ -83,32 +83,11 @@ else
 fi
 
 hostname=$(xhostname)
-worktree='/etc/puppet/.ppg/scratch-worktree'
-mkdir -p ${worktree}/reports
+reportsdir='/etc/puppet/.ppg/'
+mkdir -p ${reportsdir}
 
-export GIT_DIR=/etc/puppet/.ppg
-pushd ${worktree} &>/dev/null 
-
-if ! git rev-parse --revs-only \
-	refs/heads/${hostname} &>/dev/null ; then
-	# it is going to be the first commit
-	# FIXME: any special handling?
-	:
-fi
-cp ${REPORT_PATH} ${worktree}/reports/${hostname}.yaml
-git update-index --add reports/${hostname}.yaml
-git commit -m 'ppg apply report'
-
-headname=$(git rev-parse --symbolic-full-name --revs-only HEAD)
-if [[ "${headname}" != "refs/heads/${hostname}" ]]; then
-	# we are in thefirst run, auto-created 'master' branch
-	git branch ${hostname} HEAD
-	git checkout ${hostname}
-	git branch -D master
-fi
-
-popd &>/dev/null
-unset GIT_DIR
+datestamp=$(date -u --rfc-3339=seconds|sed 's/ /_/')
+cp ${REPORT_PATH} ${reportsdir}/${hostname}_${datestamp}.yaml
 
 # NOTE: callers rely on getting an error through if push-reports
 #       fails
