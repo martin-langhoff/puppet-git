@@ -29,34 +29,17 @@ if [[ -d "/etc/puppet/.git" ]]; then
 	exit 1
 fi
 
-echo "Cloning puppet and reports repos from $basepath to a temporary directory"
+echo "Cloning puppet repo from $basepath to a temporary directory"
 
 # the main puppet config repo
 git clone $basepath/puppet.git /etc/puppet.ppg.tmp.$$ || exit 1
-
-# and nested inside, reports repo
-if ! git --git-dir /etc/puppet.ppg.tmp.$$/.ppg init ; then
-	rm -fr /etc/puppet.ppg.tmp.$$
-fi
-
-## apply configs to .git
-echo '.ppg' >> /etc/puppet.ppg.tmp.$$/.git/info/exclude
-
-## apply configs to .ppg
-export GIT_DIR=/etc/puppet.ppg.tmp.$$/.ppg
-git remote add origin $basepath/reports.git
-git config --bool core.bare false || exit 1
-git config --path user.name "ppg" || exit 1
-git config --path user.email "root@$(/bin/hostname -f)" || exit 1
-git config --path core.worktree /etc/puppet/.ppg/scratch-worktree || exit 1
-unset GIT_DIR
 
 if [[ -d /etc/puppet ]]; then
 	ds=$(date -u --rfc-3339=date)
 	echo "Backing up /etc/puppet as /etc/puppet.backup.$ds"
 	mv /etc/puppet /etc/puppet.backup.$ds
 fi
-echo "Now moving puppet and reports dirs into /etc/puppet"
+echo "Now moving puppet dir into /etc/puppet"
 mv /etc/puppet.ppg.tmp.$$ /etc/puppet
 
 pushd /etc/puppet >/dev/null || exit 1
