@@ -29,11 +29,11 @@ if [ "$report_bool" = 'false' ]; then
 fi
 
 hostname=$(xhostname)
-reportsdir='/etc/puppet/.ppg/'
-mkdir -p ${reportsdir}
+reportsdir='/etc/puppet/.ppg'
+mkdir -p ${reportsdir}/${hostname}
 
 datestamp=$(date -u --rfc-3339=seconds|sed 's/ /_/')
-reportfpath=${reportsdir}/${hostname}_${datestamp}.yaml
+reportfpath=${reportsdir}/${hostname}/${datestamp}.yaml
 tempreport=$(mktemp -t ppg_report_XXXXX.yaml)
 
 # use a tempfile to prevent partially prepared reports

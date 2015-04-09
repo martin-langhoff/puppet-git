@@ -30,9 +30,13 @@ hostname=$(xhostname)
 remoteurl=$(git config --get remote.origin.url | sed 's!^ssh://!!;s!/!:/!')
 remoteurl=$(dirname ${remoteurl})/reports
 
-rsync -e ssh -q ${reportsdir}/ $remoteurl/
+rsync -e ssh -q -r ${reportsdir}/${hostname} $remoteurl/
 rsyncexit=$?
 
+# cleanup
 if [ $rsyncexit -eq 0 ]; then
-	find ${reportsdir}/ -type f -print0 | xargs -0 --no-run-if-empty rm 
+	find ${reportsdir}/${hostname} -type f -print0 \
+	  | xargs -0 -l100 --no-run-if-empty rm
 fi
+
+exit $rsyncexit

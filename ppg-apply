@@ -84,10 +84,10 @@ fi
 
 hostname=$(xhostname)
 reportsdir='/etc/puppet/.ppg/'
-mkdir -p ${reportsdir}
+mkdir -p ${reportsdir}/${hostname}
 
 datestamp=$(date -u --rfc-3339=seconds|sed 's/ /_/')
-cp ${REPORT_PATH} ${reportsdir}/${hostname}_${datestamp}.yaml
+cp ${REPORT_PATH} ${reportsdir}/${hostname}/${datestamp}.yaml
 
 # NOTE: callers rely on getting an error through if push-reports
 #       fails
