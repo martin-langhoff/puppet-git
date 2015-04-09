@@ -15,18 +15,9 @@ mkdir -p $1
 echo "Preparing the repository for your Puppet configurations"
 git --git-dir=${base_repo}/puppet.git init --bare
 
-echo "Preparing the repository for reports"
-git --git-dir=${base_repo}/reports.git init --bare
-# this repo will never get a normal HEAD comit
-# so prep empty commit
-export GIT_INDEX_FILE=/tmp/ppg-emptytree.$$
-export GIT_DIR=${base_repo}/reports.git
-empty_tree="$(git write-tree)"
-rm ${GIT_INDEX_FILE}
-unset GIT_INDEX_FILE
-empty_commit=$(echo empty | git commit-tree ${empty_tree})
-git update-ref refs/tags/ppg-emptycommit ${empty_commit}
-git symbolic-ref HEAD refs/tags/ppg-emptycommit
+echo "Preparing the directory for reports"
+mkdir ${base_repo}/reports
+
 echo
 echo "Make reports.git writable by the user/group that clients"
 echo "use to connect."
