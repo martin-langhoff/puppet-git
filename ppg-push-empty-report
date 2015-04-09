@@ -29,37 +29,22 @@ if [ "$report_bool" = 'false' ]; then
 fi
 
 hostname=$(xhostname)
-worktree='/etc/puppet/.ppg/scratch-worktree'
-mkdir -p ${worktree}/reports
+reportsdir='/etc/puppet/.ppg/'
+mkdir -p ${reportsdir}
 
-export GIT_DIR=/etc/puppet/.ppg
-pushd ${worktree} &>/dev/null 
+datestamp=$(date -u --rfc-3339=seconds|sed 's/ /_/')
+reportfpath=${reportsdir}/${hostname}_${datestamp}.yaml
+tempreport=$(mktemp -t ppg_report_XXXXX.yaml)
 
-if ! git rev-parse --revs-only \
-	refs/heads/${hostname} &>/dev/null ; then
-	# it is going to be the first commit
-	echo Refusing to fake first report >&2
-	exit 1
-fi
-
-cp ${PPG_EXEC_PATH}/unchanged.report ${worktree}/reports/${hostname}.yaml
+# use a tempfile to prevent partially prepared reports
+# from making it to the dashboard server
+cp ${PPG_EXEC_PATH}/unchanged.report ${tempreport}
 report_time=$(echo time: $(date +"%Y-%m-%d %H:%M:%S.%6N %:z"))
-/bin/sed -i "s,REPLACEMEDATESTAMP,${report_time},g" ${worktree}/reports/${hostname}.yaml
-/bin/sed -i "s,REPLACEMEHOSTNAME,${hostname},g"     ${worktree}/reports/${hostname}.yaml
-git update-index --add reports/${hostname}.yaml
-git commit -m 'ppg apply report'
+/bin/sed -i "s,REPLACEMEDATESTAMP,${report_time},g" ${tempreport}
+/bin/sed -i "s,REPLACEMEHOSTNAME,${hostname},g"     ${tempreport}
+mv ${tempreport} ${reportfpath}
 
-headname=$(git rev-parse --symbolic-full-name --revs-only HEAD)
-if [[ "${headname}" != "refs/heads/${hostname}" ]]; then
-	# we are in thefirst run, auto-created 'master' branch
-	git branch ${hostname} HEAD
-	git checkout ${hostname}
-	git branch -D master
-fi
+# cleanup in case we have failures
+find ${TMPDIR:/tmp} -xdev -type f -name 'ppg_report*yaml' -0 | xargs -0 --no-run-if-empty rm
 
-popd &>/dev/null
-unset GIT_DIR
-
-# NOTE: callers rely on getting an error through if push-reports
-#       fails
 exec $PPG_EXEC_PATH/ppg-push-reports
