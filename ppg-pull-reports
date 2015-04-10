@@ -1,0 +1,36 @@
+#!/bin/bash
+#
+# Reends a remote url parameter in a format appropriate for ssh/scp
+# for example: 
+#  
+#   ppg-pull-reports [ --nodelete ] puppeteer.foo.com:/var/lib/ppg/reports/
+#
+if [[ -n "${PPG_DEBUG}" ]]; then
+	set -x
+fi
+PPG_EXEC_PATH=$( dirname $(readlink -f "${BASH_SOURCE[0]}" ) )
+
+reportsdir=/var/lib/ppg/reports-import
+
+if [ "$1" == "--nodelete" ]; then
+	nodelete=1
+    shift
+fi
+remoteurl=$1
+
+rsynclog=$(tempfile -t ppg_rsynclog_XXXXX)
+rsync -r --log-file=/rsynclog ${remoteurl}/* ${reportsdir}
+rsyncexit=$?
+
+if [ $rsyncexit -ne 0 ]; then
+	exit $rsyncexit
+fi
+
+if [ -z "$nodelete" ]; then
+	sshconn=$(echo ${remoteurl} | sed 's/:.*//')
+	remote_reportsdir=$(echo ${remoteurl} | sed 's/^.*://')
+	# matches files transferred inbound in the logs,
+	# and runs a delete on the remote server
+	grep ' <f' ${rsynclog} | cut -d' ' -f 5 | sed "s:^:${remote_reportsdir}:" \
+	 | xargs -l100 --no-run-if-empty ssh ${sshconn} rm
+fi
