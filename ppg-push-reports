@@ -25,18 +25,29 @@ hostname=$(xhostname)
 # the reports go to a "reports" directory right next to
 # the puppet remote url. we must mangle the url a bit to make
 # it edible to rsync/scp
-# - remove the ssh:// prefix
+# - remove the ssh:// or git+ssh:// prefix
 # - add a : after hostname, before the first slash
-remoteurl=$(git config --get remote.origin.url | sed 's!^ssh://!!;s!/!:/!')
+remoteurl=$(git config --get remote.origin.url | sed 's!^ssh://!!;s!^git+ssh://!!;s!/!:/!')
 remoteurl=$(dirname ${remoteurl})/reports
 
-rsync -e ssh -q -r ${reportsdir}/${hostname} $remoteurl/
-rsyncexit=$?
+# Use sftp, which is awkward but co-exists easily with git-shell
+# as we want our VMs to have very limited access.
+# We always attempt to create the directory for the host
+# although it'll fail after the first time as it's been created.
+# The leading '-' makes it a softfail. Other failures are fatal
+# thanks to the '-b -' option.
+(   echo "-mkdir ${hostname}"
+    echo cd ${hostname}
+    for F in $(find ${reportsdir}/${hostname} -type f) ; do
+        # printf %q gets us the right quoting
+        printf 'put %q\n ' "${F}"
+    done ) | sftp -b - $remoteurl/
+sftpexit=$?
 
 # cleanup
-if [ $rsyncexit -eq 0 ]; then
+if [ $sftpexit -eq 0 ]; then
 	find ${reportsdir}/${hostname} -type f -print0 \
 	  | xargs -0 -l100 --no-run-if-empty rm
 fi
 
-exit $rsyncexit
+exit $sftpexit
