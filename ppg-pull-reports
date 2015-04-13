@@ -13,24 +13,13 @@ PPG_EXEC_PATH=$( dirname $(readlink -f "${BASH_SOURCE[0]}" ) )
 reportsdir=/var/lib/ppg/reports-import
 
 if [ "$1" == "--nodelete" ]; then
-	nodelete=1
+	delete=''
     shift
+else
+	# flag to lftp mirror
+    delete='--Remove-source-files'
 fi
+
 remoteurl=$1
 
-rsynclog=$(tempfile -t ppg_rsynclog_XXXXX)
-rsync -r --log-file=/rsynclog ${remoteurl}/* ${reportsdir}
-rsyncexit=$?
-
-if [ $rsyncexit -ne 0 ]; then
-	exit $rsyncexit
-fi
-
-if [ -z "$nodelete" ]; then
-	sshconn=$(echo ${remoteurl} | sed 's/:.*//')
-	remote_reportsdir=$(echo ${remoteurl} | sed 's/^.*://')
-	# matches files transferred inbound in the logs,
-	# and runs a delete on the remote server
-	grep ' <f' ${rsynclog} | cut -d' ' -f 5 | sed "s:^:${remote_reportsdir}:" \
-	 | xargs -l100 --no-run-if-empty ssh ${sshconn} rm
-fi
+lftp -c "mirror -${delete} sftp://${remoteurl}" ${reportsdir}
