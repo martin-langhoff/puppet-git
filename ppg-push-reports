@@ -32,22 +32,15 @@ remoteurl=$(dirname ${remoteurl})/reports
 
 # Use sftp, which is awkward but co-exists easily with git-shell
 # as we want our VMs to have very limited access.
-# We always attempt to create the directory for the host
-# although it'll fail after the first time as it's been created.
-# The leading '-' makes it a softfail. Other failures are fatal
-# thanks to the '-b -' option.
-(   echo "-mkdir ${hostname}"
-    echo cd ${hostname}
-    for F in $(find ${reportsdir}/${hostname} -type f) ; do
-        # printf %q gets us the right quoting
-        printf 'put %q\n ' "${F}"
-    done ) | sftp -b - $remoteurl/
-sftpexit=$?
+# For recursive, easy ftp, we use lftp, in "reverse mirror mode".
+lftp -c "mirror -R ${reportsdir}/${hostname} sftp://${remoteurl}/ "
+ftpexit=$?
 
-# cleanup
-if [ $sftpexit -eq 0 ]; then
+# The version of lftp on EL6 does not have mirror -E option, which
+# deletes fules on successful transfer. So we do it ourselves.
+if [ $ftpexit -eq 0 ]; then
 	find ${reportsdir}/${hostname} -type f -print0 \
 	  | xargs -0 -l100 --no-run-if-empty rm
 fi
 
-exit $sftpexit
+exit $ftpexit
