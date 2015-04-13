@@ -22,6 +22,10 @@ fi
 reportsdir='/etc/puppet/.ppg/reports'
 hostname=$(xhostname)
 
+# compress each report before transfer. full reports
+# are sizable and compress 10:1
+gzip -9 -q ${reportsdir}/${hostname}/*yaml
+
 # the reports go to a "reports" directory right next to
 # the puppet remote url. we must mangle the url a bit to make
 # it edible to rsync/scp
