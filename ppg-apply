@@ -83,7 +83,7 @@ else
 fi
 
 hostname=$(xhostname)
-reportsdir='/etc/puppet/.ppg/'
+reportsdir='/etc/puppet/.ppg/reports'
 mkdir -p ${reportsdir}/${hostname}
 
 datestamp=$(date -u --rfc-3339=seconds|sed 's/ /_/')
