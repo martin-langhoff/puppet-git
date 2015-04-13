@@ -36,15 +36,7 @@ remoteurl=$(dirname ${remoteurl})/reports
 
 # Use sftp, which is awkward but co-exists easily with git-shell
 # as we want our VMs to have very limited access.
-# For recursive, easy ftp, we use lftp, in "reverse mirror mode".
-lftp -c "mirror -R ${reportsdir}/${hostname} sftp://${remoteurl}/ "
-ftpexit=$?
-
-# The version of lftp on EL6 does not have mirror -E option, which
-# deletes fules on successful transfer. So we do it ourselves.
-if [ $ftpexit -eq 0 ]; then
-	find ${reportsdir}/${hostname} -type f -print0 \
-	  | xargs -0 -l100 --no-run-if-empty rm
-fi
-
-exit $ftpexit
+# For recursive, easy ftp, we use lftp, in "reverse mirror mode"
+# and --Remove-source-files performs the cleanup for us.
+# exec so we exit with lftp's error code
+exec lftp -c "mirror -R --Remove-source-files ${reportsdir}/${hostname} sftp://${remoteurl}/ "
