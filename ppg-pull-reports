@@ -3,7 +3,7 @@
 # Reends a remote url parameter in a format appropriate for ssh/scp
 # for example: 
 #  
-#   ppg-pull-reports [ --nodelete ] puppeteer.foo.com:/var/lib/ppg/reports/
+#   ppg-pull-reports [ --nodelete ] puppetclient@puppeteer.foo.com:/var/lib/ppg/reports/
 #
 if [[ -n "${PPG_DEBUG}" ]]; then
 	set -x
@@ -22,4 +22,9 @@ fi
 
 remoteurl=$1
 
-lftp -c "mirror -${delete} sftp://${remoteurl}" ${reportsdir}
+# for directories to be created correctly, both URLs must end with the name
+# of the directory, no trailing slash, so
+remoteurl=$(echo ${remoteurl} | sed 's:/$::')
+reportsdir=$(echo ${reportsdir} | sed 's:/$::')
+
+lftp -c "mirror ${delete} sftp://${remoteurl} ${reportsdir}"
