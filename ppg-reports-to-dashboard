@@ -1,4 +1,5 @@
 #!/bin/bash
+# run as puppet-dashboard
 
 if [[ -n "${PPG_DEBUG}" ]]; then
 	set -x

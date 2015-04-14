@@ -28,3 +28,4 @@ remoteurl=$(echo ${remoteurl} | sed 's:/$::')
 reportsdir=$(echo ${reportsdir} | sed 's:/$::')
 
 lftp -c "mirror ${delete} sftp://${remoteurl} ${reportsdir}"
+chown -R puppet-dashboard ${reportsdir}
