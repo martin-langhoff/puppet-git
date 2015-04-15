@@ -29,7 +29,7 @@ if [ "$report_bool" = 'false' ]; then
 fi
 
 hostname=$(xhostname)
-reportsdir='/etc/puppet/.ppg'
+reportsdir='/etc/puppet/.ppg/reports'
 mkdir -p ${reportsdir}/${hostname}
 
 datestamp=$(date -u --rfc-3339=seconds|sed 's/ /_/')
@@ -45,6 +45,6 @@ report_time=$(echo time: $(date +"%Y-%m-%d %H:%M:%S.%6N %:z"))
 mv ${tempreport} ${reportfpath}
 
 # cleanup in case we have failures
-find ${TMPDIR:/tmp} -xdev -type f -name 'ppg_report*yaml' -0 | xargs -0 --no-run-if-empty rm
+find ${TMPDIR:/tmp} -xdev -type f -name 'ppg_report*yaml' -delete
 
 exec $PPG_EXEC_PATH/ppg-push-reports
