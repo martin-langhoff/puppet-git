@@ -39,7 +39,7 @@ tempreport=$(mktemp -t ppg_report_XXXXX.yaml)
 # use a tempfile to prevent partially prepared reports
 # from making it to the dashboard server
 cp ${PPG_EXEC_PATH}/unchanged.report ${tempreport}
-report_time=$(echo time: $(date +"%Y-%m-%d %H:%M:%S.%6N %:z"))
+report_time=$(echo $(date +"%Y-%m-%d %H:%M:%S.%6N %:z"))
 /bin/sed -i "s,REPLACEMEDATESTAMP,${report_time},g" ${tempreport}
 /bin/sed -i "s,REPLACEMEHOSTNAME,${hostname},g"     ${tempreport}
 mv ${tempreport} ${reportfpath}
