@@ -54,7 +54,7 @@ echo "Log of changes to apply"
 echo
 if [ -n "$lastgood_sha1" ]; then
 	if [[ "$uptodate_sha1" != "$lastgood_sha1" ]]; then
-		git log --oneline ${lastgood_sha1}..${uptodate_sha1}
+		git --no-pager log --oneline -n 100 ${lastgood_sha1}..${uptodate_sha1}
 	else
 		echo "No changes in git"
 		this_hour=$(date +%H)
@@ -68,7 +68,7 @@ if [ -n "$lastgood_sha1" ]; then
 		fi
 	fi
 else
-	git log --oneline ${uptodate_sha1}
+	git --no-pager log --oneline -n 100 ${uptodate_sha1}
 fi
 echo
 exec $PPG_EXEC_PATH/ppg-apply "$@"

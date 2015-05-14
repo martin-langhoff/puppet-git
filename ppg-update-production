@@ -68,7 +68,7 @@ if [ "$headname" = 'refs/heads/production' ]; then
 fi
 
 echo "About to update production with scheduled changes:"
-git log --oneline refs/heads/production..$target_sha1
+git --no-pager log --oneline -n 100 refs/heads/production..$target_sha1
 
 # and finally
 if [ "$headname" = 'refs/heads/production' ]; then
