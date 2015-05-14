@@ -62,6 +62,7 @@ fi
 # 201 means flock_multi timed out waiting for the flock
 
 if [[ $pexit -eq 00 ]] || [[ $pexit -eq 2 ]]; then
+	ppg_lastgood_cleanup
 	# mark as good
 	lastgood_sha1=$(git rev-parse --revs-only ppg/lastgood)
 	if [ -n "$lastgood_sha1" ]; then

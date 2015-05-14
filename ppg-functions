@@ -20,3 +20,18 @@ xhostname() {
 	fi
 	echo "${hostname}"
 }
+
+ppg_lastgood_cleanup() {
+	# this cleanup is needed in the ppg v0.20->v0.21
+	# upgrade path. overhead is trivially minimal so
+	# we can carry it for a while...
+	#
+	# verify against the "full" name with the doubled-up
+	# refs/heads; that's the want we need to cleanup...
+	if git rev-parse --verify --quiet refs/heads/refs/heads/ppg/lastgood 1>/dev/null ; then
+		# use branch mv/rename to preserve reflog
+		# oddly enough, the rename fails when using the "full"
+		# refname, so we use the short refname instead
+		git branch -m refs/heads/ppg/lastgood ppg/lastgood
+	fi
+}

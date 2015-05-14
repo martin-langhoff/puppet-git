@@ -25,6 +25,7 @@ if [[ "$headname" != "refs/heads/production" ]]; then
 	echo >&2 "WARNING: Not on production branch"
 fi
 
+ppg_lastgood_cleanup
 initial_sha1=$(git rev-parse --revs-only HEAD)
 lastgood_sha1=$(git rev-parse --revs-only ppg/lastgood)
 
