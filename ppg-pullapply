@@ -29,11 +29,12 @@ initial_sha1=$(git rev-parse --revs-only HEAD)
 lastgood_sha1=$(git rev-parse --revs-only refs/heads/ppg/lastgood)
 
 # resilient wrt server availability...
-git fetch || echo "WARNING: error in git fetch"
+git fetch --prune || echo "WARNING: error in git fetch"
 
 if [[ "$headname" = "refs/heads/production" ]]; then
 	$PPG_EXEC_PATH/ppg-update-production || exit 1
 else
+	# On EL6, git pull does not know --prune
 	if ! git pull --ff-only ; then
 		echo "ERROR: Failed to auto-merge with ff-only,"
 		echo "       perhaps the current branch needs to"
