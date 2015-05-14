@@ -63,13 +63,13 @@ fi
 
 if [[ $pexit -eq 00 ]] || [[ $pexit -eq 2 ]]; then
 	# mark as good
-	lastgood_sha1=$(git rev-parse --revs-only refs/heads/ppg/lastgood)
+	lastgood_sha1=$(git rev-parse --revs-only ppg/lastgood)
 	if [ -n "$lastgood_sha1" ]; then
-		git push . HEAD:refs/heads/ppg/lastgood
+		git push . HEAD:ppg/lastgood
 	else
 		# setup with reflog - may be handy
 		# for diagnosis
-		git branch -l refs/heads/ppg/lastgood HEAD
+		git branch -l ppg/lastgood
 	fi
 elif [[ $pexit -eq 200 ]]; then
 	echo flock_multi error!
