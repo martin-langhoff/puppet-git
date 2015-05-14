@@ -65,7 +65,7 @@ if [[ $pexit -eq 00 ]] || [[ $pexit -eq 2 ]]; then
 	# mark as good
 	lastgood_sha1=$(git rev-parse --revs-only ppg/lastgood)
 	if [ -n "$lastgood_sha1" ]; then
-		git push . HEAD:ppg/lastgood
+		git push --force . HEAD:ppg/lastgood
 	else
 		# setup with reflog - may be handy
 		# for diagnosis
