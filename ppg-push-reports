@@ -26,17 +26,23 @@ hostname=$(xhostname)
 # are sizable and compress 10:1
 gzip -9 -q ${reportsdir}/${hostname}/*yaml
 
-# the reports go to a "reports" directory right next to
-# the puppet remote url. we must mangle the url a bit to make
-# it edible to rsync/scp
-# - remove the ssh:// or git+ssh:// prefix
-# - add a : after hostname, before the first slash
-remoteurl=$(git config --get remote.origin.url | sed 's!^ssh://!!;s!^git+ssh://!!;s!/!:/!')
+remoteurl=$(git config --get remote.origin.url)
 remoteurl=$(dirname ${remoteurl})/reports
+if [[ "$remoteurl" =~ 'ssh:' ]] ; then
+	# the reports go to a "reports" directory right next to
+	# the puppet remote url. we must mangle the url a bit to make
+	# it edible to rsync/scp
+	# - remove the ssh:// or git+ssh:// prefix
+	# - add a : after hostname, before the first slash
+	remoteurl=$(echo $remoteurl | sed 's!^ssh://!!;s!^git+ssh://!!;s!/!:/!')
 
-# Use sftp, which is awkward but co-exists easily with git-shell
-# as we want our VMs to have very limited access.
-# For recursive, easy ftp, we use lftp, in "reverse mirror mode"
-# and --Remove-source-files performs the cleanup for us.
-# exec so we exit with lftp's error code
-exec lftp -c "mirror -R --Remove-source-files ${reportsdir}/${hostname} sftp://${remoteurl}/ "
+	# Use sftp, which is awkward but co-exists easily with git-shell
+	# as we want our VMs to have very limited access.
+	# For recursive, easy ftp, we use lftp, in "reverse mirror mode"
+	# and --Remove-source-files performs the cleanup for us.
+	# exec so we exit with lftp's error code
+	exec lftp -c "set net:timeout 10; set net:max-retries 6; mirror -R --Remove-source-files ${reportsdir}/${hostname} sftp://${remoteurl}/ "
+else
+	# local path
+	exec rsync -vr ${reportsdir}/${hostname} ${remoteurl}/
+fi
