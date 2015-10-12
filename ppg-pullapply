@@ -59,8 +59,10 @@ if [ -n "$lastgood_sha1" ]; then
 		echo "No changes in git"
 		this_hour=$(date +%H)
 		unconditional_hour=$(( ( $(hostnametoint) % 18 ) + 5 ))
+		global_ini_changed=$( test /mnt/data/conf/global.ini -nt /mnt/data/conf/global.ini.parsed )$?
 		# incrond triggered runs use PPG_NOTLAZY
-		if [[ -z "${PPG_NOTLAZY}" ]]; then
+		# global.ini newer than global.ini.parsed will skip lazy too
+		if [[ -z "${PPG_NOTLAZY}" && $global_ini_changed -ne 0 ]]; then
 			# lazy 23 times a day
 			if [ ${this_hour} -ne ${unconditional_hour} ]; then
 				exec $PPG_EXEC_PATH/ppg-push-empty-report
