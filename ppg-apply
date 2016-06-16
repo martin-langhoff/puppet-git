@@ -83,6 +83,8 @@ else
 	:
 fi
 
+[ -n "${PPG_NOREPORT}" ] && exit 0
+
 hostname=$(xhostname)
 reportsdir='/etc/puppet/.ppg/reports'
 mkdir -p ${reportsdir}/${hostname}

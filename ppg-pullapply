@@ -65,7 +65,9 @@ if [ -n "$lastgood_sha1" ]; then
 		if [[ -z "${PPG_NOTLAZY}" && $global_ini_changed -ne 0 ]]; then
 			# lazy 23 times a day
 			if [ ${this_hour} -ne ${unconditional_hour} ]; then
-				exec $PPG_EXEC_PATH/ppg-push-empty-report
+				if [ -z "${PPG_NOREPORT}" ] ; then
+				    exec $PPG_EXEC_PATH/ppg-push-empty-report
+                                fi
 			fi
 		fi
 	fi
